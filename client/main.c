@@ -48,4 +48,5 @@ int main(int argc, char **argv)
 	
 	init_interfaces();
 	init_dhcp();
+	return 0;
 }

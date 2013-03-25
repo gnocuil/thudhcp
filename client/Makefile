@@ -1,7 +1,7 @@
 CC     := gcc
 CFLAGS := 
 TARGET := thudhclient
-OBJS   := main.o interface.o dhcp.o
+OBJS   := main.o interface.o dhcp.o socket.o
 
 all: $(TARGET)
 

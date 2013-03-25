@@ -50,4 +50,13 @@ void init_interfaces()
 	}
 	if_freenameindex(interfaces);
 	close(fd);  
+	
+	if (!network_interface) {
+		fprintf(stderr, "network-interface not found ! name=%s\n", network_interface_name);
+		exit(1);
+	}
+	if (!config_interface) {
+		fprintf(stderr, "config-interface not found ! name=%s\n", config_interface_name);
+		exit(1);
+	}
 }

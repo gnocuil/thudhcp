@@ -18,6 +18,7 @@ void init_dhcp()
 {
 	next_state = DISCOVER;
 	srand(time(NULL));
+	socket_init();
 	dhcp_discover();
 }
 
@@ -31,6 +32,10 @@ int gen_options(struct dhcp_packet *packet)
 	pos = gen_option_message_type(packet->options, pos);
 	pos = gen_option_host_name(packet->options, pos);
 	pos = gen_option_parameter_request_list(packet->options, pos);
+	if (next_state == REQUEST) {
+		pos = gen_option_server_id(packet->options, pos);
+		pos = gen_option_ip_address(packet->options, pos);
+	}
 	int len = sizeof(struct dhcp_packet) - sizeof(packet->options) + pos;
 	return len;
 }
@@ -76,15 +81,21 @@ int gen_option_parameter_request_list(char *options, int pos)
 	return pos;
 }
 
-void dhcp_discover()
+int gen_option_server_id(char *options, int pos)
 {
-	if (next_state != DISCOVER) {
-		printf("State is not DISCOVER!\n");
-		return;
-	}
-	
-	generate_xid();
-	
+	//TODO
+	return pos;
+}
+
+int gen_option_ip_address(char *options, int pos)
+{
+	//TODO
+	return pos;
+}
+
+
+static struct dhcp_packet* make_packet(int *len)
+{
 	struct dhcp_packet *packet = malloc(sizeof(struct dhcp_packet));
 	memset(packet, 0, sizeof(struct dhcp_packet));
 	packet->op = BOOT_REQUEST;
@@ -99,9 +110,92 @@ void dhcp_discover()
 	packet->siaddr = 0;
 	packet->giaddr = 0;
 	memcpy(packet->chaddr, config_interface->addr, 6);
-	int len = gen_options(packet);
-	
-	send_packet((char*)packet, len);
-	
-	free(packet);
+	*len = gen_options(packet);
+	return packet;
 }
+
+void dhcp_discover()
+{
+	if (next_state != DISCOVER) {
+		printf("State is not DISCOVER!\n");
+		return;
+	}
+	
+	generate_xid();
+	
+	int len;
+	struct dhcp_packet *packet = make_packet(&len);
+	send_packet((char*)packet, len);
+	free(packet);
+	
+	next_state = OFFER;
+	dhcp_offer();
+}
+
+int check_packet(struct dhcp_packet *packet)
+{
+	if (packet->op != BOOT_REPLY) {
+		fprintf(stderr, "received packet is not BOOT_REPLY!\n");
+		return 0;
+	}
+	if (packet->xid != xid) {
+		fprintf(stderr, "received packet transaction ID does not match!\n");
+		return 0;
+	}
+	
+	if (memcmp(packet->chaddr, config_interface->addr, 6) != 0) {
+		fprintf(stderr, "received packet mac address does not match!\n");
+		return 0;
+	}
+	
+	return 1;
+/*	
+	if (next_state == OFFER) {	
+	} else if (next_state == ACK) {
+	}
+*/
+}
+
+void dhcp_offer()
+{
+	if (next_state != OFFER) {
+		printf("State is not OFFER!\n");
+		return;
+	}
+	
+	struct dhcp_packet *packet = malloc(sizeof(struct dhcp_packet));
+	memset(packet, 0, sizeof(struct dhcp_packet));
+	int valid = 0;
+	while (!valid) {
+		int len = recv_packet((char*)packet, sizeof(struct dhcp_packet));
+		valid = check_packet(packet);
+	}
+	//process lease...
+		
+	free(packet);
+	
+	next_state = REQUEST;
+	dhcp_request();
+}
+
+void dhcp_request()
+{
+	if (next_state != REQUEST) {
+		printf("State is not REQUEST!\n");
+		return;
+	}
+	
+	int len;
+	struct dhcp_packet *packet = make_packet(&len);
+	send_packet((char*)packet, len);
+	free(packet);
+	
+	next_state = ACK;
+	dhcp_ack();
+}
+
+void dhcp_ack()
+{
+	printf("ACK!!!\n");
+}
+

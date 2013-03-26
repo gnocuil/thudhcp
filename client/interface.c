@@ -198,4 +198,27 @@ void configure_interface(struct lease* lease)
 		return;
 	}
 	config_dns(lease);
+	
+	save_lease(lease);
 }
+
+void save_lease(struct lease* lease)
+{
+	char path[500] = {0};
+	strcpy(path, DEFAULT_LEASE_PATH);
+	int len = strlen(path);
+	if (path[len - 1] != '/')
+		path[len++] = '/';
+	char cmd[600] = {0};
+	sprintf(cmd, "mkdir -p %s\n", path);
+	system(cmd);
+	memset(cmd, 0, sizeof(cmd));
+	sprintf(cmd, "%s%s.lease", path, config_interface->name);
+	printf("cmd=%s\n", cmd);
+	FILE *fout = fopen(cmd, "w");
+	if (!fout)
+		return;
+	fwrite(lease, 1, sizeof(struct lease), fout);
+	fclose(fout);
+}
+

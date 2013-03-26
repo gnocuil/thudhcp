@@ -70,5 +70,4 @@ extern STATE next_state;
 #define OPTION_PARAMETERREQUESTLIST 55
 #define OPTION_RENEWALTIME          58
 
-
 #endif /* __DHCP_H__ */

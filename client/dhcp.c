@@ -7,6 +7,7 @@
 #include "dhcp.h"
 #include "interface.h"
 #include "lease.h"
+#include "socket.h"
 
 STATE next_state;
 
@@ -20,6 +21,7 @@ void init_dhcp()
 	next_state = DISCOVER;
 	srand(time(NULL));
 	//socket_init();
+	timeout_count = TIMEOUT_RETRY_TIMES;
 	dhcp_discover();
 }
 
@@ -218,6 +220,17 @@ void dhcp_offer()
 	int valid = 0;
 	while (!valid) {
 		int len = recv_packet((char*)packet, sizeof(struct dhcp_packet));
+		if (len < 0) {/* timeout */
+			free_socket();
+			if (timeout_count--) {
+				next_state = DISCOVER;
+				dhcp_discover();
+				return;
+			} else {
+				fprintf(stderr, "give up...\n");
+				exit(0);
+			}
+		}
 		valid = check_packet(packet);
 	}
 	process_lease(&offer_lease, packet);
@@ -225,6 +238,7 @@ void dhcp_offer()
 	free(packet);
 	free_socket();
 	
+	timeout_count = TIMEOUT_RETRY_TIMES;
 	next_state = REQUEST;
 	dhcp_request();
 }
@@ -257,6 +271,17 @@ void dhcp_ack()
 	int valid = 0;
 	while (!valid) {
 		int len = recv_packet((char*)packet, sizeof(struct dhcp_packet));
+		if (len < 0) {/* timeout */
+			free_socket();
+			if (timeout_count--) {
+				next_state = REQUEST;
+				dhcp_request();
+				return;
+			} else {
+				fprintf(stderr, "give up...\n");
+				exit(0);
+			}
+		}
 		valid = check_packet(packet);
 	}
 	process_lease(&ack_lease, packet);

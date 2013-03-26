@@ -2,6 +2,7 @@
 #define __DHCP_H__
 
 #include <stdint.h>
+#include "lease.h"
 
 struct dhcp_packet {
 	uint8_t op;
@@ -27,6 +28,7 @@ void dhcp_discover();
 void dhcp_offer();
 void dhcp_request();
 void dhcp_ack();
+void process_lease(struct lease* lease, struct dhcp_packet *packet);
 int check_packet(struct dhcp_packet *packet);
 int gen_options(struct dhcp_packet *packet);
 int gen_option_message_type(char *options, int pos);
@@ -34,6 +36,7 @@ int gen_option_host_name(char *options, int pos);
 int gen_option_parameter_request_list(char *options, int pos);
 int gen_option_server_id(char *options, int pos);
 int gen_option_ip_address(char *options, int pos);
+
 
 #define HOSTNAME_LEN 80
 char hostname[HOSTNAME_LEN];
@@ -61,9 +64,11 @@ extern STATE next_state;
 #define OPTION_DOMAINNAME           15
 #define OPTION_BROADCAST            28
 #define OPTION_IPADDRESS            50
+#define OPTION_LEASETIME            51
 #define OPTION_MESSAGETYPE          53
 #define OPTION_SERVERID             54
 #define OPTION_PARAMETERREQUESTLIST 55
+#define OPTION_RENEWALTIME          58
 
 
 #endif /* __DHCP_H__ */

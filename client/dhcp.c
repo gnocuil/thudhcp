@@ -6,6 +6,7 @@
       
 #include "dhcp.h"
 #include "interface.h"
+#include "lease.h"
 
 STATE next_state;
 
@@ -18,7 +19,7 @@ void init_dhcp()
 {
 	next_state = DISCOVER;
 	srand(time(NULL));
-	socket_init();
+	//socket_init();
 	dhcp_discover();
 }
 
@@ -36,6 +37,7 @@ int gen_options(struct dhcp_packet *packet)
 		pos = gen_option_server_id(packet->options, pos);
 		pos = gen_option_ip_address(packet->options, pos);
 	}
+	packet->options[pos++] = 0xff;
 	int len = sizeof(struct dhcp_packet) - sizeof(packet->options) + pos;
 	return len;
 }
@@ -78,19 +80,24 @@ int gen_option_parameter_request_list(char *options, int pos)
 	++*len; options[pos++] = OPTION_ROUTER;
 	++*len; options[pos++] = OPTION_DOMAINNAME;
 	++*len; options[pos++] = OPTION_DNSSERVER;
+	++*len; options[pos++] = OPTION_SERVERID;
 	return pos;
 }
 
 int gen_option_server_id(char *options, int pos)
 {
-	//TODO
-	return pos;
+	options[pos++] = OPTION_SERVERID;
+	options[pos++] = 4;
+	*(uint32_t*)(options + pos) = offer_lease.server_ip;
+	return pos + 4;
 }
 
 int gen_option_ip_address(char *options, int pos)
 {
-	//TODO
-	return pos;
+	options[pos++] = OPTION_IPADDRESS;
+	options[pos++] = 4;
+	*(uint32_t*)(options + pos) = offer_lease.client_ip;
+	return pos + 4;
 }
 
 
@@ -135,18 +142,26 @@ void dhcp_discover()
 int check_packet(struct dhcp_packet *packet)
 {
 	if (packet->op != BOOT_REPLY) {
-		fprintf(stderr, "received packet is not BOOT_REPLY!\n");
+		//fprintf(stderr, "received packet is not BOOT_REPLY!\n");
 		return 0;
 	}
 	if (packet->xid != xid) {
-		fprintf(stderr, "received packet transaction ID does not match!\n");
+		//fprintf(stderr, "received packet transaction ID does not match!\n");
 		return 0;
 	}
 	
 	if (memcmp(packet->chaddr, config_interface->addr, 6) != 0) {
-		fprintf(stderr, "received packet mac address does not match!\n");
+		//fprintf(stderr, "received packet mac address does not match!\n");
 		return 0;
 	}
+	if (packet->options[0] != 0x63)
+		return 0;
+	if (packet->options[1] != 0x82)
+		return 0;
+	if (packet->options[2] != 0x53)
+		return 0;
+	if (packet->options[3] != 0x63)
+		return 0;
 	
 	return 1;
 /*	
@@ -154,6 +169,41 @@ int check_packet(struct dhcp_packet *packet)
 	} else if (next_state == ACK) {
 	}
 */
+}
+
+void process_lease(struct lease* lease, struct dhcp_packet *packet)
+{
+	memset(lease, 0, sizeof(struct lease));
+	lease->client_ip = packet->yiaddr;
+	char *p = packet->options + 4;
+	while ((*p & 0xff) != 0xff) {
+		switch (*p) {
+		case OPTION_DOMAINNAME:
+			memcpy(lease->dns, p + 2, *(p + 1));
+			break;
+		case OPTION_DNSSERVER:
+			lease->dns_ip = *(uint32_t*)(p + 2);
+			break;
+		case OPTION_LEASETIME:
+			lease->lease_time = htonl(*(uint32_t*)(p + 2));
+			break;
+		case OPTION_RENEWALTIME:
+			lease->renew_time = htonl(*(uint32_t*)(p + 2));
+			break;
+		case OPTION_ROUTER:
+			lease->router_ip = *(uint32_t*)(p + 2);
+			break;
+		case OPTION_SERVERID:
+			lease->server_ip = *(uint32_t*)(p + 2);
+			break;
+		default:
+			break;
+		}
+		p++;
+		p += *p + 1;
+	}
+	if (lease->renew_time == 0)
+		lease->renew_time = lease->lease_time / 2;
 }
 
 void dhcp_offer()
@@ -170,9 +220,10 @@ void dhcp_offer()
 		int len = recv_packet((char*)packet, sizeof(struct dhcp_packet));
 		valid = check_packet(packet);
 	}
-	//process lease...
+	process_lease(&offer_lease, packet);
 		
 	free(packet);
+	free_socket();
 	
 	next_state = REQUEST;
 	dhcp_request();
@@ -196,6 +247,23 @@ void dhcp_request()
 
 void dhcp_ack()
 {
-	printf("ACK!!!\n");
+	if (next_state != ACK) {
+		printf("State is not ACK!\n");
+		return;
+	}
+	
+	struct dhcp_packet *packet = malloc(sizeof(struct dhcp_packet));
+	memset(packet, 0, sizeof(struct dhcp_packet));
+	int valid = 0;
+	while (!valid) {
+		int len = recv_packet((char*)packet, sizeof(struct dhcp_packet));
+		valid = check_packet(packet);
+	}
+	process_lease(&ack_lease, packet);
+		
+	free(packet);
+	free_socket();
+	
+	configure_interface(&ack_lease);
 }
 

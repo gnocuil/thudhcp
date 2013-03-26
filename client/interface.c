@@ -204,6 +204,8 @@ void configure_interface(struct lease* lease)
 	if (check_dns_name(lease))
 		printf("	DNS Server : %s\n", lease->dns);
 	printf("	DNS Server : %s\n", (char*)inet_ntoa(dns.sin_addr));
+	printf("    Lease time : %ds\n", lease->lease_time);
+	printf("    Renew time : %ds\n", lease->renew_time);
 	
 	if (set_ipaddr(config_interface->name, addr) != 0) {
 		//fprintf("Failed to config IP address!\n");

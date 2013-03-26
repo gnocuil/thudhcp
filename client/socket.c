@@ -14,25 +14,9 @@
 
 void init_socket()
 {
-	/* UDP socket
+	/* UDP socket */
 	struct sockaddr_in servaddr;
-	switch (mode) {
-	case IPv4:
-		ipv4_fd = socket(AF_INET, SOCK_DGRAM, 0);		
-		memset(&servaddr, 0, sizeof(servaddr));
-		servaddr.sin_family = AF_INET;
-		servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-		servaddr.sin_port = htons(IPv4_CLIENT_PORT);
-		if (bind(ipv4_fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
-			fprintf(stderr, "socket_init(): bind error\n");
-			exit(1);
-		}
-		break;
-	default:
-		printf("socket_init() : unknown mode!\n");
-		exit(0);
-	}
-	*/
+	
 	if (mode == IPv4) {
 		if (next_state == DISCOVER || next_state == REQUEST) {
 			listen_raw_fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
@@ -44,6 +28,17 @@ void init_socket()
 			timeout.tv_sec = RECV_TIMEOUT_SEC;
 			timeout.tv_usec = 0;
 			setsockopt(listen_raw_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+			
+			/* create a UDP socket to prevent ICMP port unreachable */
+			ipv4_fd = socket(AF_INET, SOCK_DGRAM, 0);		
+			memset(&servaddr, 0, sizeof(servaddr));
+			servaddr.sin_family = AF_INET;
+			servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+			servaddr.sin_port = htons(IPv4_CLIENT_PORT);
+			if (bind(ipv4_fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
+				//fprintf(stderr, "socket_init(): bind error\n");
+				//exit(1);
+			}
 		}
 	}
 }
@@ -53,6 +48,10 @@ void free_socket()
 	if (mode == IPv4) {
 		if (next_state == OFFER || next_state == ACK) {
 			close(listen_raw_fd);
+			if (ipv4_fd) {
+				close(ipv4_fd);
+				ipv4_fd = 0;
+			}
 		}
 	}
 }

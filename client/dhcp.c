@@ -20,16 +20,27 @@ void init_dhcp()
 {
 	srand(time(NULL));
 	timeout_count = TIMEOUT_RETRY_TIMES;
-	generate_xid();
 	
 	if (load_lease(&offer_lease)) {
 		renew = 1;
+		generate_xid();
 		next_state = REQUEST;
 		dhcp_request();
 	} else {
 		next_state = DISCOVER;
 		dhcp_discover();
 	}
+}
+
+void handle_dhcp()
+{
+	printf("Sleep for %d seconds...\n", ack_lease.renew_time);
+	sleep(ack_lease.renew_time);
+	memcpy(&offer_lease, &ack_lease, sizeof(struct lease));
+	renew = 1;
+	generate_xid();
+	next_state = REQUEST;
+	dhcp_request();
 }
 
 int gen_options(struct dhcp_packet *packet)

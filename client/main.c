@@ -19,7 +19,7 @@ int main(int argc, char **argv)
 {
 	mode = IPv4;
 	int i;
-	for (i = 0; i < argc; ++i) {
+	for (i = 1; i < argc; ++i) {
 		if (i + 1 < argc && strcmp(argv[i], "--network-interface") == 0) {
 			++i;
 			strcpy(network_interface_name, argv[i]);
@@ -48,5 +48,8 @@ int main(int argc, char **argv)
 	
 	init_interfaces();
 	init_dhcp();
+	while (1) {
+		handle_dhcp();
+	}
 	return 0;
 }

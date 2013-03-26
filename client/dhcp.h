@@ -23,6 +23,7 @@ struct dhcp_packet {
 };
 
 void init_dhcp();
+void handle_dhcp();
 uint32_t generate_xid();
 void dhcp_discover();
 void dhcp_offer();

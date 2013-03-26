@@ -13,10 +13,10 @@
 
 static char* mac_to_str(unsigned char *ha)
 {
-    int i;  
-    static char macstr_buf[18] = {'\0', };
-    sprintf(macstr_buf, "%02X:%02X:%02X:%02X:%02X:%02X", ha[0], ha[1], ha[2], ha[3], ha[4], ha[5]);
-    return macstr_buf; 
+	int i;  
+	static char macstr_buf[18] = {'\0', };
+	sprintf(macstr_buf, "%02X:%02X:%02X:%02X:%02X:%02X", ha[0], ha[1], ha[2], ha[3], ha[4], ha[5]);
+	return macstr_buf; 
 }
 
 void init_interfaces()
@@ -67,79 +67,89 @@ void init_interfaces()
 
 static int set_ipaddr(char *interface_name, struct sockaddr_in addr)
 {
-    int s;
+	int s;
+	if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+		fprintf(stderr, "Error up %s :%m\n",interface_name, errno);
+		return -1;
+	}
+	struct ifreq ifr;
+	strcpy(ifr.ifr_name, interface_name);
+	memcpy(&ifr.ifr_ifru.ifru_addr, &addr, sizeof(struct sockaddr_in));
+	if(ioctl(s, SIOCSIFADDR, &ifr) < 0) {
+		printf("Error set %s ip :%m\n",interface_name, errno);
+		return -1;
+	}
+	return 0;
+}
 
-    if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
-    {
-        fprintf(stderr, "Error up %s :%m\n",interface_name, errno);
-        return -1;
-    }
-
-    struct ifreq ifr;
-    strcpy(ifr.ifr_name, interface_name);
-
-    memcpy(&ifr.ifr_ifru.ifru_addr, &addr, sizeof(struct sockaddr_in));
-
-    if(ioctl(s, SIOCSIFADDR, &ifr) < 0)
-    {
-        printf("Error set %s ip :%m\n",interface_name, errno);
-        return -1;
-    }
-
-    return 0;
+static int set_submask(char *interface_name, struct sockaddr_in mask)
+{
+	int s;
+	if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+		fprintf(stderr, "Error up %s :%m\n",interface_name, errno);
+		return -1;
+	}
+	struct ifreq ifr;
+	strcpy(ifr.ifr_name, interface_name);
+	memcpy(&ifr.ifr_ifru.ifru_addr, &mask, sizeof(struct sockaddr_in));
+	if(ioctl(s, SIOCSIFNETMASK, &ifr) < 0) {
+		printf("Error set %s mask :%m\n",interface_name, errno);
+		return -1;
+	}
+	return 0;
 }
 
 static int route_add(char * interface_name, struct lease *lease)
 {
-    int skfd;
-    struct rtentry rt;
+	int skfd;
+	struct rtentry rt;
 
-    struct sockaddr_in dst;
-    struct sockaddr_in gateway;
-    struct sockaddr_in genmask;
+	struct sockaddr_in dst;
+	struct sockaddr_in gateway;
+	struct sockaddr_in genmask;
 
-    bzero(&genmask,sizeof(struct sockaddr_in));
-    genmask.sin_family = AF_INET;
-    genmask.sin_addr.s_addr = inet_addr("0.0.0.0");
+	bzero(&genmask,sizeof(struct sockaddr_in));
+	genmask.sin_family = AF_INET;
+	genmask.sin_addr.s_addr = inet_addr("0.0.0.0");
 
-    bzero(&dst,sizeof(struct sockaddr_in));
-    dst.sin_family = AF_INET;
-    dst.sin_addr.s_addr = inet_addr("0.0.0.0");
-    
-    bzero(&gateway,sizeof(struct sockaddr_in));
-    gateway.sin_family = AF_INET;
-    gateway.sin_addr.s_addr = lease->router_ip;
+	bzero(&dst,sizeof(struct sockaddr_in));
+	dst.sin_family = AF_INET;
+	dst.sin_addr.s_addr = inet_addr("0.0.0.0");
+	
+	bzero(&gateway,sizeof(struct sockaddr_in));
+	gateway.sin_family = AF_INET;
+	gateway.sin_addr.s_addr = lease->router_ip;
 
-    memset(&rt, 0, sizeof(rt));
+	memset(&rt, 0, sizeof(rt));
 
-    rt.rt_dst = *(struct sockaddr*) &dst;
-    rt.rt_genmask = *(struct sockaddr*) &genmask;
-    //rt.rt_gateway = *(struct sockaddr*) &gateway;
+	rt.rt_dst = *(struct sockaddr*) &dst;
+	rt.rt_genmask = *(struct sockaddr*) &genmask;
+	//rt.rt_gateway = *(struct sockaddr*) &gateway;
 
-    skfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if(ioctl(skfd, SIOCDELRT, &rt) < 0) 
-    {
-        //printf("Error route del :%m\n", errno);
-        //return -1;
-    }
+	skfd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(ioctl(skfd, SIOCDELRT, &rt) < 0) 
+	{
+		//printf("Error route del :%m\n", errno);
+		//return -1;
+	}
 
-    memset(&rt, 0, sizeof(rt));
+	memset(&rt, 0, sizeof(rt));
 
-    rt.rt_metric = 0;
+	rt.rt_metric = 0;
   
-    rt.rt_dst = *(struct sockaddr*) &dst;
-    rt.rt_genmask = *(struct sockaddr*) &genmask;
-    rt.rt_gateway = *(struct sockaddr*) &gateway;
+	rt.rt_dst = *(struct sockaddr*) &dst;
+	rt.rt_genmask = *(struct sockaddr*) &genmask;
+	rt.rt_gateway = *(struct sockaddr*) &gateway;
 
-    rt.rt_dev = interface_name;
-    rt.rt_flags = RTF_UP | RTF_GATEWAY;
+	rt.rt_dev = interface_name;
+	rt.rt_flags = RTF_UP | RTF_GATEWAY;
 
-    //skfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if(ioctl(skfd, SIOCADDRT, &rt) < 0) 
-    {
-        printf("Error route add :%m\n", errno);
-        return -1;
-    }
+	//skfd = socket(AF_INET, SOCK_DGRAM, 0);
+	if(ioctl(skfd, SIOCADDRT, &rt) < 0) 
+	{
+		printf("Error route add :%m\n", errno);
+		return -1;
+	}
 }
 
 static int check_dns_name(struct lease* lease)
@@ -173,6 +183,10 @@ void configure_interface(struct lease* lease)
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = lease->client_ip;
+	struct sockaddr_in mask;
+	memset(&mask, 0, sizeof(mask));
+	mask.sin_family = AF_INET;
+	mask.sin_addr.s_addr = lease->mask_ip;
 	struct sockaddr_in gateway;
 	memset(&gateway, 0, sizeof(gateway));
 	gateway.sin_family = AF_INET;
@@ -184,14 +198,18 @@ void configure_interface(struct lease* lease)
 
 	
 	printf("Configure interface %s:\n", config_interface->name);
-	printf("    IP address : %s\n", (char*)inet_ntoa(addr.sin_addr));
-	printf("    Gateway address : %s\n", (char*)inet_ntoa(gateway.sin_addr));
+	printf("	IP address : %s\n", (char*)inet_ntoa(addr.sin_addr));
+	printf("	IP subnet mask : %s\n", (char*)inet_ntoa(mask.sin_addr));
+	printf("	Gateway address : %s\n", (char*)inet_ntoa(gateway.sin_addr));
 	if (check_dns_name(lease))
-		printf("    DNS Server : %s\n", lease->dns);
-	printf("    DNS Server : %s\n", (char*)inet_ntoa(dns.sin_addr));
+		printf("	DNS Server : %s\n", lease->dns);
+	printf("	DNS Server : %s\n", (char*)inet_ntoa(dns.sin_addr));
 	
 	if (set_ipaddr(config_interface->name, addr) != 0) {
 		//fprintf("Failed to config IP address!\n");
+		return;
+	}
+	if (set_submask(config_interface->name, mask) != 0) {
 		return;
 	}
 	if (route_add(config_interface->name, lease) != 0) {

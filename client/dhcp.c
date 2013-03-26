@@ -198,6 +198,9 @@ void process_lease(struct lease* lease, struct dhcp_packet *packet)
 		case OPTION_SERVERID:
 			lease->server_ip = *(uint32_t*)(p + 2);
 			break;
+		case OPTION_SUBNETMASK:
+			lease->mask_ip = *(uint32_t*)(p + 2);
+			break;
 		default:
 			break;
 		}

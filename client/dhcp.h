@@ -43,6 +43,8 @@ char hostname[HOSTNAME_LEN];
 
 uint32_t xid;/* transaction ID */
 
+int renew;/* whether renewing */
+
 typedef enum {
 	DISCOVER,
 	OFFER,

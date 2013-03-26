@@ -232,11 +232,30 @@ void save_lease(struct lease* lease)
 	system(cmd);
 	memset(cmd, 0, sizeof(cmd));
 	sprintf(cmd, "%s%s.lease", path, config_interface->name);
-	printf("cmd=%s\n", cmd);
+	printf("Saving lease to %s\n", cmd);
 	FILE *fout = fopen(cmd, "w");
 	if (!fout)
 		return;
 	fwrite(lease, 1, sizeof(struct lease), fout);
 	fclose(fout);
 }
+
+int load_lease(struct lease* lease)
+{
+	char path[500] = {0};
+	strcpy(path, DEFAULT_LEASE_PATH);
+	int len = strlen(path);
+	if (path[len - 1] != '/')
+		path[len++] = '/';
+	char cmd[600] = {0};
+	sprintf(cmd, "%s%s.lease", path, config_interface->name);
+	printf("Loading lease from %s\n", cmd);
+	FILE *fin = fopen(cmd, "r");
+	if (!fin)
+		return 0;
+	fread(lease, 1, sizeof(struct lease), fin);
+	fclose(fin);
+	return 1;
+}
+
 

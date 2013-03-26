@@ -18,11 +18,18 @@ uint32_t generate_xid()
 
 void init_dhcp()
 {
-	next_state = DISCOVER;
 	srand(time(NULL));
-	//socket_init();
 	timeout_count = TIMEOUT_RETRY_TIMES;
-	dhcp_discover();
+	generate_xid();
+	
+	if (load_lease(&offer_lease)) {
+		renew = 1;
+		next_state = REQUEST;
+		dhcp_request();
+	} else {
+		next_state = DISCOVER;
+		dhcp_discover();
+	}
 }
 
 int gen_options(struct dhcp_packet *packet)
@@ -131,6 +138,7 @@ void dhcp_discover()
 	}
 	
 	generate_xid();
+	renew = 0;
 	
 	int len;
 	struct dhcp_packet *packet = make_packet(&len);
@@ -281,8 +289,15 @@ void dhcp_ack()
 				dhcp_request();
 				return;
 			} else {
-				fprintf(stderr, "give up...\n");
-				exit(0);
+				if (renew) {
+					fprintf(stderr, "Failed to renew, try to re-allocate\n");
+					next_state = DISCOVER;
+					dhcp_discover();
+					return;
+				} else {
+					fprintf(stderr, "give up...\n");
+					exit(0);
+				}
 			}
 		}
 		valid = check_packet(packet);

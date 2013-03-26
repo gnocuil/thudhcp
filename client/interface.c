@@ -37,6 +37,15 @@ void init_interfaces()
 			memcpy(addr, ifopt.ifr_hwaddr.sa_data, 6);
 			valid_addr = 1;
 		}
+		if (!valid_addr || (addr[0] == 0 && addr[1] == 0 && addr[2] == 0 && addr[3] == 0 && addr[4] == 0 && addr[5] == 0)) {
+            valid_addr = 0;
+		    addr[0] = rand() % 0xFF;
+		    addr[1] = rand() % 0xFF;
+		    addr[2] = rand() % 0xFF;
+		    addr[3] = rand() % 0xFF;
+		    addr[4] = rand() % 0xFF;
+		    addr[5] = rand() % 0xFF;
+		}
 		if (strcmp(network_interface_name, interface->if_name) == 0 && !network_interface) {
 			network_interface = malloc(sizeof(struct interface));
 			memset(network_interface, 0, sizeof(struct interface));
@@ -45,6 +54,8 @@ void init_interfaces()
 			printf("network-interface is %s, macaddr=%s\n", network_interface->name, mac_to_str(network_interface->addr));
 		}
 		if (strcmp(config_interface_name, interface->if_name) == 0 && !config_interface) {
+            if (!valid_addr)
+                printf("Interface %s does not have mac address, use random value instead\n", interface->if_name);
 			config_interface = malloc(sizeof(struct interface));
 			memset(config_interface, 0, sizeof(struct interface));
 			strcpy(config_interface->name, interface->if_name);

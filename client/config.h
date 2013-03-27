@@ -6,6 +6,8 @@
 char config_interface_name[INTERFACE_NAME_LEN];
 char network_interface_name[INTERFACE_NAME_LEN];
 
+char server_addr[100];
+struct sockaddr_in6 dest;/* server_addr */
 
 typedef enum {
 	IPv4,

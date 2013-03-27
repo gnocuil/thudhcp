@@ -40,6 +40,20 @@ void init_socket()
 				//exit(1);
 			}
 		}
+	} else if (mode == IPv6) {
+		if ((ipv6_fd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
+			fprintf(stderr, "Failed to create sockfd!\n");
+			exit(1);
+		}
+		struct sockaddr_in6 my_addr;
+		bzero(&my_addr, sizeof(my_addr));
+		my_addr.sin6_family = PF_INET6;
+		my_addr.sin6_port = htons(67);
+		my_addr.sin6_addr = in6addr_any;
+		if (bind(ipv6_fd, (struct sockaddr *) &my_addr, sizeof(struct sockaddr_in6)) < 0) {
+			fprintf(stderr, "Failed to bind!\n");
+			exit(1);
+		}
 	}
 }
 
@@ -53,6 +67,9 @@ void free_socket()
 				ipv4_fd = 0;
 			}
 		}
+	} else if (mode == IPv6) {
+		close(ipv6_fd);
+		ipv6_fd = 0;
 	}
 }
 
@@ -136,6 +153,9 @@ void send_packet(char *packet, int len)
 	case IPv4:
 		send_packet_ipv4(packet, len);
 		return;
+	case IPv6:
+		send_packet_ipv6(packet, len);
+		return;
 	default:
 		printf("send_packet : unknown mode!\n");
 		exit(0);
@@ -194,11 +214,22 @@ void send_packet_ipv4(char *packet, int len)
 	close(fd);
 }
 
+void send_packet_ipv6(char *packet, int len)
+{    
+    if (sendto(ipv6_fd, packet, len, 0, (struct sockaddr *)&dest, sizeof(struct sockaddr_in6)) < 0) {
+    	fprintf(stderr, "Failed to send!\n");
+    	exit(1);
+    }
+    
+}
+
 int recv_packet(char* packet, int max_len)
 {
 	switch (mode) {
 	case IPv4:
 		return recv_packet_ipv4(packet, max_len);
+	case IPv6:
+		return recv_packet_ipv6(packet, max_len);
 	default:
 		printf("recv_packet : unknown mode!\n");
 		exit(0);
@@ -207,17 +238,6 @@ int recv_packet(char* packet, int max_len)
 
 int recv_packet_ipv4(char* packet, int max_len)
 {
-/*  UDP socket
-	int len;
-	if ((len = recvfrom(ipv4_fd, packet, max_len, 0, NULL, NULL)) < 0) {
-		perror("receive error!\n");
-		exit(0);
-	}
-	printf("received %d bytes\n", len);
-//	close(fd);
-	return len;
-*/
-	
 	int len = recv(listen_raw_fd, buf, max_len, 0);
 	if (len < 0) {
 		fprintf(stderr, "recv timeout!\n");
@@ -228,5 +248,12 @@ int recv_packet_ipv4(char* packet, int max_len)
 	return len;
 }
 
+int recv_packet_ipv6(char* packet, int max_len)
+{
+	socklen_t addr_len;
+	struct sockaddr_in6 addr;
+	int len = recvfrom(ipv6_fd, packet, max_len, 0, (struct sockaddr *)&addr, (socklen_t*)&addr_len);
+	return len;
+}
 
 

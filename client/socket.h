@@ -6,9 +6,11 @@ void free_socket();
 
 void send_packet(char *packet, int len);
 void send_packet_ipv4(char *packet, int len);
+void send_packet_ipv6(char *packet, int len);
 
 int recv_packet(char* packet, int max_len);
 int recv_packet_ipv4(char* packet, int max_len);
+int recv_packet_ipv6(char* packet, int max_len);
 
 #define UDP 0x11
 
@@ -23,6 +25,7 @@ int timeout_count;
 char buf[BUF_LEN];
 
 int ipv4_fd;
+int ipv6_fd;
 
 int listen_raw_fd;
 

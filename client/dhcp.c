@@ -84,6 +84,10 @@ int gen_option_host_name(char *options, int pos)
 {
 	gethostname(hostname, HOSTNAME_LEN);
 	int len = strlen(hostname);
+	hostname[len++] = '-';
+	int len2 = strlen(config_interface->name);
+	strcpy(hostname + len, config_interface->name);
+	len += len2;
 	options[pos++] = OPTION_HOSTNAME;
 	options[pos++] = len;
 	memcpy(options + pos, hostname, len);
@@ -302,6 +306,7 @@ void dhcp_ack()
 			} else {
 				if (renew) {
 					fprintf(stderr, "Failed to renew, try to re-allocate\n");
+					timeout_count = TIMEOUT_RETRY_TIMES;
 					next_state = DISCOVER;
 					dhcp_discover();
 					return;

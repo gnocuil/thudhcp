@@ -15,8 +15,8 @@ int recv_packet_ipv4(char* packet, int max_len);
 #define IPv4_SERVER_PORT 67
 #define IPv4_CLIENT_PORT 68
 
-#define RECV_TIMEOUT_SEC 5
-#define TIMEOUT_RETRY_TIMES 5
+#define RECV_TIMEOUT_SEC 3
+#define TIMEOUT_RETRY_TIMES 4
 int timeout_count;
 
 #define BUF_LEN 2000

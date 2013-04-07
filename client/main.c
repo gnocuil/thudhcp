@@ -12,14 +12,16 @@ static void usage()
 {
 	printf("Usage : thclient [options] <config_interface>\n");
 	printf("        options:\n");
-	printf("            --network-interface <network_interface>         default the same as config_interface\n");
-	printf("            --encap-mode <mode>                             valid modes: ipv4, ipv6, dhcpv6, default ipv4\n");
-	printf("            --server-addr <server_ipv6_addr>                IPv6 address of DHCPv4-over-IPv6 server\n");
+	printf("            -f                                       default the same as config_interface\n");
+	printf("            --network-interface <network_interface>  default the same as config_interface\n");
+	printf("            --encap-mode <mode>                      available modes: ipv4(default), ipv6, dhcpv6\n");
+	printf("            --server-addr <server_ipv6_addr>         IPv6 address of DHCPv4-over-IPv6 server\n");
 }
 
 int main(int argc, char **argv)
 {
 	mode = IPv4;
+	daemon = 0;
 	int i;
 	for (i = 1; i < argc; ++i) {
 		if (i + 1 < argc && strcmp(argv[i], "--network-interface") == 0) {
@@ -69,6 +71,7 @@ int main(int argc, char **argv)
 	
 	init_interfaces();
 	init_dhcp();
+//	if (
 	while (1) {
 		handle_dhcp();
 	}

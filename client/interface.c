@@ -138,15 +138,15 @@ static int route_add(char * interface_name, struct lease *lease)
 	//rt.rt_gateway = *(struct sockaddr*) &gateway;
 
 	skfd = socket(AF_INET, SOCK_DGRAM, 0);
-	if(ioctl(skfd, SIOCDELRT, &rt) < 0) 
-	{
+	//if(ioctl(skfd, SIOCDELRT, &rt) < 0) 
+	//{
 		//printf("Error route del :%m\n", errno);
 		//return -1;
-	}
+	//}
 
 	memset(&rt, 0, sizeof(rt));
 
-	rt.rt_metric = 0;
+	rt.rt_metric = 2;
   
 	rt.rt_dst = *(struct sockaddr*) &dst;
 	rt.rt_genmask = *(struct sockaddr*) &genmask;
@@ -209,14 +209,14 @@ void configure_interface(struct lease* lease)
 
 	
 	printf("Configure interface %s:\n", config_interface->name);
-	printf("	IP address : %s\n", (char*)inet_ntoa(addr.sin_addr));
-	printf("	IP subnet mask : %s\n", (char*)inet_ntoa(mask.sin_addr));
-	printf("	Gateway address : %s\n", (char*)inet_ntoa(gateway.sin_addr));
+	printf("\tIP address : %s\n", (char*)inet_ntoa(addr.sin_addr));
+	printf("\tIP subnet mask : %s\n", (char*)inet_ntoa(mask.sin_addr));
+	printf("\tGateway address : %s\n", (char*)inet_ntoa(gateway.sin_addr));
 	if (check_dns_name(lease))
-		printf("	DNS Server : %s\n", lease->dns);
-	printf("	DNS Server : %s\n", (char*)inet_ntoa(dns.sin_addr));
-	printf("    Lease time : %ds\n", lease->lease_time);
-	printf("    Renew time : %ds\n", lease->renew_time);
+		printf("\tDNS Server : %s\n", lease->dns);
+	printf("\tDNS Server : %s\n", (char*)inet_ntoa(dns.sin_addr));
+	printf("\tLease time : %ds\n", lease->lease_time);
+	printf("\tRenew time : %ds\n", lease->renew_time);
 	
 	if (set_ipaddr(config_interface->name, addr) != 0) {
 		//fprintf("Failed to config IP address!\n");

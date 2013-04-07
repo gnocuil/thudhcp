@@ -151,6 +151,7 @@ void dhcp_discover()
 		printf("State is not DISCOVER!\n");
 		return;
 	}
+	printf("dhcp_discover()...\n");
 	
 	generate_xid();
 	renew = 0;
@@ -275,6 +276,7 @@ void dhcp_request()
 		printf("State is not REQUEST!\n");
 		return;
 	}
+	printf("dhcp_request()...\n");
 	
 	int len;
 	struct dhcp_packet *packet = make_packet(&len);

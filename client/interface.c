@@ -225,7 +225,6 @@ static void config_portset(struct lease* lease)
 		(network >> 24) & 0xFF,
 		mask_len
 	);
-	puts(ipmask);
 	uint16_t port_start = lease->portset_index & lease->portset_mask;
 	uint16_t port_end = lease->portset_index | (~lease->portset_mask);
 	int mode, protocol;

@@ -14,7 +14,7 @@ static void usage()
 	printf("        options:\n");
 	printf("            --network-interface <network_interface>         default the same as config_interface\n");
 	printf("            --encap-mode <mode>                             valid modes: ipv4, ipv6, dhcpv6, default ipv4\n");
-	printf("            --server-addr <server_ipv6_addr>                IPv6 address of DHCPv4-over-IPv6 server");
+	printf("            --server-addr <server_ipv6_addr>                IPv6 address of DHCPv4-over-IPv6 server\n");
 }
 
 int main(int argc, char **argv)

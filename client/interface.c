@@ -250,6 +250,7 @@ void save_lease(struct lease* lease)
 	if (!fout)
 		return;
 	fwrite(lease, 1, sizeof(struct lease), fout);
+	fwrite(config_interface, 1, sizeof(struct interface), fout);
 	fclose(fout);
 }
 
@@ -267,7 +268,11 @@ int load_lease(struct lease* lease)
 	if (!fin)
 		return 0;
 	fread(lease, 1, sizeof(struct lease), fin);
+	struct interface tmp_interface;
+	fread(&(tmp_interface), 1, sizeof(struct interface), fin);
 	fclose(fin);
+	if (memcmp(&tmp_interface, config_interface, sizeof(struct interface)) != 0)
+		return 0;/* lease does not match! */
 	return 1;
 }
 

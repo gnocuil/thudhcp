@@ -34,7 +34,7 @@ void init_dhcp()
 
 void handle_dhcp()
 {
-	printf("Sleep for %d seconds...\n", ack_lease.renew_time);
+	fprintf(err, "Sleep for %d seconds...\n", ack_lease.renew_time);
 	sleep(ack_lease.renew_time);
 	memcpy(&offer_lease, &ack_lease, sizeof(struct lease));
 	renew = 1;
@@ -74,7 +74,7 @@ int gen_option_message_type(char *options, int pos)
 		options[pos++] = 3;
 		break;
 	default:
-		printf("unknown next_state!\n");
+		fprintf(err, "unknown next_state!\n");
 		exit(0);
 	}
 	return pos;
@@ -148,10 +148,10 @@ static struct dhcp_packet* make_packet(int *len)
 void dhcp_discover()
 {
 	if (next_state != DISCOVER) {
-		printf("State is not DISCOVER!\n");
+		fprintf(err, "State is not DISCOVER!\n");
 		return;
 	}
-	printf("dhcp_discover()...\n");
+	fprintf(err, "dhcp_discover()...\n");
 	
 	generate_xid();
 	renew = 0;
@@ -238,7 +238,7 @@ void process_lease(struct lease* lease, struct dhcp_packet *packet)
 void dhcp_offer()
 {
 	if (next_state != OFFER) {
-		printf("State is not OFFER!\n");
+		fprintf(err, "State is not OFFER!\n");
 		return;
 	}
 	
@@ -254,7 +254,7 @@ void dhcp_offer()
 				dhcp_discover();
 				return;
 			} else {
-				fprintf(stderr, "give up...\n");
+				fprintf(err, "give up...\n");
 				exit(0);
 			}
 		}
@@ -273,10 +273,10 @@ void dhcp_offer()
 void dhcp_request()
 {
 	if (next_state != REQUEST) {
-		printf("State is not REQUEST!\n");
+		fprintf(err, "State is not REQUEST!\n");
 		return;
 	}
-	printf("dhcp_request()...\n");
+	fprintf(err, "dhcp_request()...\n");
 	
 	int len;
 	struct dhcp_packet *packet = make_packet(&len);
@@ -290,7 +290,7 @@ void dhcp_request()
 void dhcp_ack()
 {
 	if (next_state != ACK) {
-		printf("State is not ACK!\n");
+		fprintf(err, "State is not ACK!\n");
 		return;
 	}
 	
@@ -307,13 +307,13 @@ void dhcp_ack()
 				return;
 			} else {
 				if (renew) {
-					fprintf(stderr, "Failed to renew, try to re-allocate\n");
+					fprintf(err, "Failed to renew, try to re-allocate\n");
 					timeout_count = TIMEOUT_RETRY_TIMES;
 					next_state = DISCOVER;
 					dhcp_discover();
 					return;
 				} else {
-					fprintf(stderr, "give up...\n");
+					fprintf(err, "give up...\n");
 					exit(0);
 				}
 			}

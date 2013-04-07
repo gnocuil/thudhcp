@@ -55,6 +55,8 @@ typedef enum {
 
 extern STATE next_state;
 
+extern FILE *err;
+
 #define BOOT_REQUEST 1
 #define BOOT_REPLY 2
 

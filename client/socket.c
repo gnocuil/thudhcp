@@ -21,7 +21,7 @@ void init_socket()
 		if (next_state == DISCOVER || next_state == REQUEST) {
 			listen_raw_fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 			if (listen_raw_fd < 0) {
-				printf("Failed to create listening raw socket.\n");
+				fprintf(err, "Failed to create listening raw socket.\n");
 				exit(0);
 			}
 			struct timeval timeout;
@@ -36,13 +36,13 @@ void init_socket()
 			servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 			servaddr.sin_port = htons(IPv4_CLIENT_PORT);
 			if (bind(ipv4_fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
-				//fprintf(stderr, "socket_init(): bind error\n");
+				//fprintf(err, "socket_init(): bind error\n");
 				//exit(1);
 			}
 		}
 	} else if (mode == IPv6) {
 		if ((ipv6_fd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
-			fprintf(stderr, "Failed to create sockfd!\n");
+			fprintf(err, "Failed to create sockfd!\n");
 			exit(1);
 		}
 		struct sockaddr_in6 my_addr;
@@ -51,7 +51,7 @@ void init_socket()
 		my_addr.sin6_port = htons(67);
 		my_addr.sin6_addr = in6addr_any;
 		if (bind(ipv6_fd, (struct sockaddr *) &my_addr, sizeof(struct sockaddr_in6)) < 0) {
-			fprintf(stderr, "Failed to bind!\n");
+			fprintf(err, "Failed to bind!\n");
 			exit(1);
 		}
 	}
@@ -77,7 +77,7 @@ static uint16_t udpchecksum(char *iphead, char *udphead, int udplen, int type)
 {
     udphead[6] = udphead[7] = 0;
     uint32_t checksum = 0;
-    //printf("udp checksum is 0x%02x%02x\n", (uint8_t)udphead[6], (uint8_t)udphead[7]);
+    //fprintf(err, "udp checksum is 0x%02x%02x\n", (uint8_t)udphead[6], (uint8_t)udphead[7]);
     if (type == 6)
     {
         struct udp6_psedoheader header;
@@ -157,7 +157,7 @@ void send_packet(char *packet, int len)
 		send_packet_ipv6(packet, len);
 		return;
 	default:
-		printf("send_packet : unknown mode!\n");
+		fprintf(err, "send_packet : unknown mode!\n");
 		exit(0);
 	}
 }
@@ -197,18 +197,18 @@ void send_packet_ipv4(char *packet, int len)
 	
 	int fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 	if (fd < 0) {
-		fprintf(stderr, "Failed to create send socket.\n");
+		fprintf(err, "Failed to create send socket.\n");
 		exit(1);
 	}
 	
 	struct sockaddr_ll device;
 	if ((device.sll_ifindex = if_nametoindex(network_interface->name)) == 0) {
-		fprintf(stderr, "Failed to resolve the index of %s.\n", network_interface->name);
+		fprintf(err, "Failed to resolve the index of %s.\n", network_interface->name);
 		exit(1);
 	}
 	
 	if (sendto(fd, buf, total_len, 0, (struct sockaddr *)&device, sizeof(device)) < 0) {
-		fprintf(stderr, "Failed to send ipv4 packet.\n");
+		fprintf(err, "Failed to send ipv4 packet.\n");
 		exit(1);
 	}
 	close(fd);
@@ -217,7 +217,7 @@ void send_packet_ipv4(char *packet, int len)
 void send_packet_ipv6(char *packet, int len)
 {    
     if (sendto(ipv6_fd, packet, len, 0, (struct sockaddr *)&dest, sizeof(struct sockaddr_in6)) < 0) {
-    	fprintf(stderr, "Failed to send!\n");
+    	fprintf(err, "Failed to send!\n");
     	exit(1);
     }
     
@@ -231,7 +231,7 @@ int recv_packet(char* packet, int max_len)
 	case IPv6:
 		return recv_packet_ipv6(packet, max_len);
 	default:
-		printf("recv_packet : unknown mode!\n");
+		fprintf(err, "recv_packet : unknown mode!\n");
 		exit(0);
 	}
 }
@@ -240,7 +240,7 @@ int recv_packet_ipv4(char* packet, int max_len)
 {
 	int len = recv(listen_raw_fd, buf, max_len, 0);
 	if (len < 0) {
-		fprintf(stderr, "recv timeout!\n");
+		fprintf(err, "recv timeout!\n");
 		return -1;
 	}
 	len -= 14 + 20 + 8;

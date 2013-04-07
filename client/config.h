@@ -10,6 +10,9 @@ char server_addr[100];
 struct sockaddr_in6 dest;/* server_addr */
 
 int daemon;
+FILE *err;
+//#define DAEMON_LOG "/tmp/thclient.log"
+#define DAEMON_LOG "/dev/null"
 
 typedef enum {
 	IPv4,

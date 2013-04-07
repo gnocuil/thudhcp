@@ -31,7 +31,7 @@ void init_interfaces()
 		memset(&ifopt, 0, sizeof(ifopt));
 		strcpy(ifopt.ifr_name, interface->if_name);
 		if (ioctl(fd, SIOCGIFHWADDR, &ifopt) == -1) {
-			printf("Failed to get MAC address of %s\n", interface->if_name);
+			fprintf(err, "Failed to get MAC address of %s\n", interface->if_name);
 			valid_addr = 0;
 		} else {
 			memcpy(addr, ifopt.ifr_hwaddr.sa_data, 6);
@@ -51,27 +51,27 @@ void init_interfaces()
 			memset(network_interface, 0, sizeof(struct interface));
 			strcpy(network_interface->name, interface->if_name);
 			memcpy(network_interface->addr, addr, 6);
-			printf("network-interface is %s, macaddr=%s\n", network_interface->name, mac_to_str(network_interface->addr));
+			fprintf(err, "network-interface is %s, macaddr=%s\n", network_interface->name, mac_to_str(network_interface->addr));
 		}
 		if (strcmp(config_interface_name, interface->if_name) == 0 && !config_interface) {
             if (!valid_addr)
-                printf("Interface %s does not have mac address, use random value instead\n", interface->if_name);
+                fprintf(err, "Interface %s does not have mac address, use random value instead\n", interface->if_name);
 			config_interface = malloc(sizeof(struct interface));
 			memset(config_interface, 0, sizeof(struct interface));
 			strcpy(config_interface->name, interface->if_name);
 			memcpy(config_interface->addr, addr, 6);
-			printf("config-interface is %s, macaddr=%s\n", config_interface->name, mac_to_str(config_interface->addr));
+			fprintf(err, "config-interface is %s, macaddr=%s\n", config_interface->name, mac_to_str(config_interface->addr));
 		}
 	}
 	if_freenameindex(interfaces);
 	close(fd);  
 	
 	if (!network_interface) {
-		fprintf(stderr, "network-interface not found ! name=%s\n", network_interface_name);
+		fprintf(err, "network-interface not found ! name=%s\n", network_interface_name);
 		exit(1);
 	}
 	if (!config_interface) {
-		fprintf(stderr, "config-interface not found ! name=%s\n", config_interface_name);
+		fprintf(err, "config-interface not found ! name=%s\n", config_interface_name);
 		exit(1);
 	}
 }
@@ -80,14 +80,14 @@ static int set_ipaddr(char *interface_name, struct sockaddr_in addr)
 {
 	int s;
 	if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-		fprintf(stderr, "Error up %s :%m\n",interface_name, errno);
+		fprintf(err, "Error up %s :%m\n",interface_name, errno);
 		return -1;
 	}
 	struct ifreq ifr;
 	strcpy(ifr.ifr_name, interface_name);
 	memcpy(&ifr.ifr_ifru.ifru_addr, &addr, sizeof(struct sockaddr_in));
 	if(ioctl(s, SIOCSIFADDR, &ifr) < 0) {
-		printf("Error set %s ip :%m\n",interface_name, errno);
+		fprintf(err, "Error set %s ip :%m\n",interface_name, errno);
 		return -1;
 	}
 	return 0;
@@ -97,14 +97,14 @@ static int set_submask(char *interface_name, struct sockaddr_in mask)
 {
 	int s;
 	if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-		fprintf(stderr, "Error up %s :%m\n",interface_name, errno);
+		fprintf(err, "Error up %s :%m\n",interface_name, errno);
 		return -1;
 	}
 	struct ifreq ifr;
 	strcpy(ifr.ifr_name, interface_name);
 	memcpy(&ifr.ifr_ifru.ifru_addr, &mask, sizeof(struct sockaddr_in));
 	if(ioctl(s, SIOCSIFNETMASK, &ifr) < 0) {
-		printf("Error set %s mask :%m\n",interface_name, errno);
+		fprintf(err, "Error set %s mask :%m\n",interface_name, errno);
 		return -1;
 	}
 	return 0;
@@ -140,7 +140,7 @@ static int route_add(char * interface_name, struct lease *lease)
 	skfd = socket(AF_INET, SOCK_DGRAM, 0);
 	//if(ioctl(skfd, SIOCDELRT, &rt) < 0) 
 	//{
-		//printf("Error route del :%m\n", errno);
+		//fprintf(err, "Error route del :%m\n", errno);
 		//return -1;
 	//}
 
@@ -158,7 +158,7 @@ static int route_add(char * interface_name, struct lease *lease)
 	//skfd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(ioctl(skfd, SIOCADDRT, &rt) < 0) 
 	{
-		printf("Error route add :%m\n", errno);
+		fprintf(err, "Error route add :%m\n", errno);
 		return -1;
 	}
 }
@@ -208,25 +208,25 @@ void configure_interface(struct lease* lease)
 	dns.sin_addr.s_addr = lease->dns_ip;
 
 	
-	printf("Configure interface %s:\n", config_interface->name);
-	printf("\tIP address : %s\n", (char*)inet_ntoa(addr.sin_addr));
-	printf("\tIP subnet mask : %s\n", (char*)inet_ntoa(mask.sin_addr));
-	printf("\tGateway address : %s\n", (char*)inet_ntoa(gateway.sin_addr));
+	fprintf(err, "Configure interface %s:\n", config_interface->name);
+	fprintf(err, "\tIP address : %s\n", (char*)inet_ntoa(addr.sin_addr));
+	fprintf(err, "\tIP subnet mask : %s\n", (char*)inet_ntoa(mask.sin_addr));
+	fprintf(err, "\tGateway address : %s\n", (char*)inet_ntoa(gateway.sin_addr));
 	if (check_dns_name(lease))
-		printf("\tDNS Server : %s\n", lease->dns);
-	printf("\tDNS Server : %s\n", (char*)inet_ntoa(dns.sin_addr));
-	printf("\tLease time : %ds\n", lease->lease_time);
-	printf("\tRenew time : %ds\n", lease->renew_time);
+		fprintf(err, "\tDNS Server : %s\n", lease->dns);
+	fprintf(err, "\tDNS Server : %s\n", (char*)inet_ntoa(dns.sin_addr));
+	fprintf(err, "\tLease time : %ds\n", lease->lease_time);
+	fprintf(err, "\tRenew time : %ds\n", lease->renew_time);
 	
 	if (set_ipaddr(config_interface->name, addr) != 0) {
-		//fprintf("Failed to config IP address!\n");
+		//ffprintf(err, "Failed to config IP address!\n");
 		return;
 	}
 	if (set_submask(config_interface->name, mask) != 0) {
 		return;
 	}
 	if (route_add(config_interface->name, lease) != 0) {
-		return;
+		//return;
 	}
 	config_dns(lease);
 	
@@ -245,7 +245,7 @@ void save_lease(struct lease* lease)
 	system(cmd);
 	memset(cmd, 0, sizeof(cmd));
 	sprintf(cmd, "%s%s.lease", path, config_interface->name);
-	printf("Saving lease to %s\n", cmd);
+	fprintf(err, "Saving lease to %s\n", cmd);
 	FILE *fout = fopen(cmd, "w");
 	if (!fout)
 		return;
@@ -263,7 +263,7 @@ int load_lease(struct lease* lease)
 		path[len++] = '/';
 	char cmd[600] = {0};
 	sprintf(cmd, "%s%s.lease", path, config_interface->name);
-	printf("Loading lease from %s\n", cmd);
+	fprintf(err, "Loading lease from %s\n", cmd);
 	FILE *fin = fopen(cmd, "r");
 	if (!fin)
 		return 0;

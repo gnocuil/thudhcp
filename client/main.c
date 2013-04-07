@@ -10,7 +10,7 @@ MODE mode;
 
 static void usage()
 {
-	printf("Usage : thudhclient [options] <config_interface>\n");
+	printf("Usage : thclient [options] <config_interface>\n");
 	printf("        options:\n");
 	printf("            --network-interface <network_interface>         default the same as config_interface\n");
 	printf("            --encap-mode <mode>                             valid modes: ipv4, ipv6, dhcpv6, default ipv4\n");

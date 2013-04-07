@@ -1,6 +1,6 @@
 CC     := gcc
 CFLAGS := 
-TARGET := thudhclient
+TARGET := thclient
 OBJS   := main.o interface.o dhcp.o socket.o
 
 all: $(TARGET)

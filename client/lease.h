@@ -14,6 +14,8 @@ struct lease {
 	char dns[DNS_NAME_LEN];
 	uint32_t lease_time;
 	uint32_t renew_time;
+	uint16_t portset_index;
+	uint16_t portset_mask;
 };
 
 struct lease offer_lease;

@@ -56,13 +56,14 @@ int gen_options(struct dhcp_packet *packet)
 	if (next_state == REQUEST) {
 		pos = gen_option_server_id(packet->options, pos);
 		pos = gen_option_ip_address(packet->options, pos);
+		pos = gen_option_portset(packet->options, pos);
 	}
 	packet->options[pos++] = 0xff;
 	int len = sizeof(struct dhcp_packet) - sizeof(packet->options) + pos;
 	return len;
 }
 
-int gen_option_message_type(char *options, int pos)
+int gen_option_message_type(uint8_t *options, int pos)
 {
 	options[pos++] = OPTION_MESSAGETYPE;
 	options[pos++] = 1;
@@ -80,7 +81,7 @@ int gen_option_message_type(char *options, int pos)
 	return pos;
 }
 
-int gen_option_host_name(char *options, int pos)
+int gen_option_host_name(uint8_t *options, int pos)
 {
 	gethostname(hostname, HOSTNAME_LEN);
 	int len = strlen(hostname);
@@ -94,7 +95,7 @@ int gen_option_host_name(char *options, int pos)
 	return pos + len;
 }
 
-int gen_option_parameter_request_list(char *options, int pos)
+int gen_option_parameter_request_list(uint8_t *options, int pos)
 {
 	options[pos++] = OPTION_PARAMETERREQUESTLIST;
 	char *len = options + pos++;
@@ -105,10 +106,13 @@ int gen_option_parameter_request_list(char *options, int pos)
 	++*len; options[pos++] = OPTION_DOMAINNAME;
 	++*len; options[pos++] = OPTION_DNSSERVER;
 	++*len; options[pos++] = OPTION_SERVERID;
+	if (portset) {
+		++*len; options[pos++] = OPTION_PORTSET;
+	}
 	return pos;
 }
 
-int gen_option_server_id(char *options, int pos)
+int gen_option_server_id(uint8_t *options, int pos)
 {
 	options[pos++] = OPTION_SERVERID;
 	options[pos++] = 4;
@@ -116,7 +120,7 @@ int gen_option_server_id(char *options, int pos)
 	return pos + 4;
 }
 
-int gen_option_ip_address(char *options, int pos)
+int gen_option_ip_address(uint8_t *options, int pos)
 {
 	options[pos++] = OPTION_IPADDRESS;
 	options[pos++] = 4;
@@ -124,6 +128,14 @@ int gen_option_ip_address(char *options, int pos)
 	return pos + 4;
 }
 
+int gen_option_portset(uint8_t *options, int pos)
+{
+	options[pos++] = OPTION_PORTSET;
+	options[pos++] = 4;
+	*(uint16_t*)(options + pos) = htons(offer_lease.portset_index);
+	*(uint16_t*)(options + pos + 2) = htons(offer_lease.portset_mask);
+	return pos + 4;
+}
 
 static struct dhcp_packet* make_packet(int *len)
 {
@@ -189,6 +201,23 @@ int check_packet(struct dhcp_packet *packet)
 	if (packet->options[3] != 0x63)
 		return 0;
 	
+	if (portset) {
+		int found_portset = 0;
+		uint8_t *p = packet->options + 4;
+		while (PACKET_INSIDE(p, packet) && (*p & 0xff) != 0xff) {
+			if (*p == OPTION_PORTSET) {
+				if (*(p + 1) == 4)
+					found_portset = 1;
+				break;
+			}
+			p++;
+			p += *p + 1;
+		}
+		if (!found_portset) {
+			return 0;
+		}
+	}
+	
 	return 1;
 /*	
 	if (next_state == OFFER) {	
@@ -201,8 +230,8 @@ void process_lease(struct lease* lease, struct dhcp_packet *packet)
 {
 	memset(lease, 0, sizeof(struct lease));
 	lease->client_ip = packet->yiaddr;
-	char *p = packet->options + 4;
-	while ((*p & 0xff) != 0xff) {
+	uint8_t *p = packet->options + 4;
+	while (PACKET_INSIDE(p, packet) && (*p & 0xff) != 0xff) {
 		switch (*p) {
 		case OPTION_DOMAINNAME:
 			memcpy(lease->dns, p + 2, *(p + 1));
@@ -224,6 +253,10 @@ void process_lease(struct lease* lease, struct dhcp_packet *packet)
 			break;
 		case OPTION_SUBNETMASK:
 			lease->mask_ip = *(uint32_t*)(p + 2);
+			break;
+		case OPTION_PORTSET:
+			lease->portset_index = ntohs(*(uint16_t*)(p + 2));
+			lease->portset_mask = ntohs(*(uint16_t*)(p + 4));
 			break;
 		default:
 			break;

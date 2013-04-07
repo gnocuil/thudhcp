@@ -22,6 +22,9 @@ struct dhcp_packet {
 	uint8_t options[1500];
 };
 
+#define PACKET_END(p) (((uint8_t*)(p)) + sizeof(struct dhcp_packet))
+#define PACKET_INSIDE(i,p) (((uint8_t*)(i)) >= ((uint8_t*)(p)) && ((uint8_t*)(i)) <= PACKET_END(p))
+
 void init_dhcp();
 void handle_dhcp();
 uint32_t generate_xid();
@@ -32,12 +35,12 @@ void dhcp_ack();
 void process_lease(struct lease* lease, struct dhcp_packet *packet);
 int check_packet(struct dhcp_packet *packet);
 int gen_options(struct dhcp_packet *packet);
-int gen_option_message_type(char *options, int pos);
-int gen_option_host_name(char *options, int pos);
-int gen_option_parameter_request_list(char *options, int pos);
-int gen_option_server_id(char *options, int pos);
-int gen_option_ip_address(char *options, int pos);
-
+int gen_option_message_type(uint8_t *options, int pos);
+int gen_option_host_name(uint8_t *options, int pos);
+int gen_option_parameter_request_list(uint8_t *options, int pos);
+int gen_option_server_id(uint8_t *options, int pos);
+int gen_option_ip_address(uint8_t *options, int pos);
+int gen_option_portset(uint8_t *options, int pos);
 
 #define HOSTNAME_LEN 80
 char hostname[HOSTNAME_LEN];
@@ -45,6 +48,8 @@ char hostname[HOSTNAME_LEN];
 uint32_t xid;/* transaction ID */
 
 int renew;/* whether renewing */
+
+int portset;
 
 typedef enum {
 	DISCOVER,
@@ -74,5 +79,6 @@ extern FILE *err;
 #define OPTION_SERVERID             54
 #define OPTION_PARAMETERREQUESTLIST 55
 #define OPTION_RENEWALTIME          58
+#define OPTION_PORTSET              224
 
 #endif /* __DHCP_H__ */

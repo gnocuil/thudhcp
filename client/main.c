@@ -13,6 +13,7 @@ static void usage()
 	printf("Usage : thclient [options] <config_interface>\n");
 	printf("        options:\n");
 	printf("            -f                                       running in front mode (default in daemon mode)\n");
+	printf("            -p                                       Use port set\n");
 	printf("            --network-interface <network_interface>  default the same as config_interface\n");
 	printf("            --encap-mode <mode>                      available modes: ipv4(default), ipv6, dhcpv6\n");
 	printf("            --server-addr <server_ipv6_addr>         IPv6 address of DHCPv4-over-IPv6 server\n");
@@ -56,10 +57,13 @@ int main(int argc, char **argv)
 	mode = IPv4;
 	daemon = 1;
 	err = stderr;
+	portset = 0;
 	int i;
 	for (i = 1; i < argc; ++i) {
 		if (strcmp(argv[i], "-f") == 0) {
 			daemon = 0;
+		} else if (strcmp(argv[i], "-p") == 0) {
+			portset = 1;
 		} else if (i + 1 < argc && strcmp(argv[i], "--network-interface") == 0) {
 			++i;
 			strcpy(network_interface_name, argv[i]);
@@ -97,6 +101,11 @@ int main(int argc, char **argv)
 		}
 		printf("server-addr : %s\n", server_addr);
 	}
+	
+	if (portset)
+		printf("Port Set!\n");
+	else
+		printf("No Port Set!\n");
 	
 	if (config_interface_name[0] == '\0') {
 		usage();

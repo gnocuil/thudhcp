@@ -188,6 +188,52 @@ static void config_dns(struct lease* lease)
 	fclose(dns_file);
 }
 
+#define DEL 0
+#define ADD 1
+
+#define TCP 0
+#define UDP 1
+#define ICMP 2
+static void iptables(char *ipmask, uint16_t port_start, uint16_t port_end, int protocol, int mode)
+{
+	char cmd[100] = {0};
+	sprintf(cmd, "iptables -t nat -%c POSTROUTING -s %s -p %s -j MASQUERADE --to-ports %d-%d",
+		(mode == DEL) ? 'D' : 'A',
+		ipmask,
+		(protocol == TCP) ? "TCP" : ((protocol == UDP) ? "UDP" : "ICMP"),
+		port_start,
+		port_end
+	);
+	system(cmd);
+}
+
+static void config_portset(struct lease* lease)
+{
+	int mask = lease->mask_ip;
+	int mask_len = 0;
+	while (mask) {
+		if (mask & 1)
+			++mask_len;
+		mask >>= 1;
+	}
+	char ipmask[20] = {0};
+	uint32_t network = lease->client_ip & lease->mask_ip;
+	sprintf(ipmask, "%d.%d.%d.%d/%d",
+		network & 0xFF,
+		(network >> 8) & 0xFF,
+		(network >> 16) & 0xFF,
+		(network >> 24) & 0xFF,
+		mask_len
+	);
+	puts(ipmask);
+	uint16_t port_start = lease->portset_index & lease->portset_mask;
+	uint16_t port_end = lease->portset_index | (~lease->portset_mask);
+	int mode, protocol;
+	for (mode = DEL; mode <= ADD; ++mode)
+		for (protocol = TCP; protocol <= ICMP; ++protocol)
+			iptables(ipmask, port_start, port_end, protocol, mode);
+}
+
 void configure_interface(struct lease* lease)
 {
 	struct sockaddr_in addr;
@@ -217,6 +263,11 @@ void configure_interface(struct lease* lease)
 	fprintf(err, "\tDNS Server : %s\n", (char*)inet_ntoa(dns.sin_addr));
 	fprintf(err, "\tLease time : %ds\n", lease->lease_time);
 	fprintf(err, "\tRenew time : %ds\n", lease->renew_time);
+	if (portset) {
+		fprintf(err, "\tPort set mask  : 0x%04x\n", lease->portset_mask);
+		fprintf(err, "\tPort set index : 0x%04x\n", lease->portset_index);
+	}
+
 	
 	if (set_ipaddr(config_interface->name, addr) != 0) {
 		//ffprintf(err, "Failed to config IP address!\n");
@@ -229,6 +280,9 @@ void configure_interface(struct lease* lease)
 		//return;
 	}
 	config_dns(lease);
+	if (portset) {
+		config_portset(lease);
+	}
 	
 	save_lease(lease);
 }
@@ -273,6 +327,13 @@ int load_lease(struct lease* lease)
 	fclose(fin);
 	if (memcmp(&tmp_interface, config_interface, sizeof(struct interface)) != 0)
 		return 0;/* lease does not match! */
+	if (portset) {//port set mode
+		if (lease->portset_index == 0 && lease->portset_mask == 0)
+			return 0;/* invalid port set */
+	} else {//no port set mode
+		if (lease->portset_index != 0 || lease->portset_mask != 0)
+			return 0;/* invalid port set */
+	}
 	return 1;
 }
 

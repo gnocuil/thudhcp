@@ -4,6 +4,7 @@
 #define INTERFACE_NAME_LEN 100
 
 #include "lease.h"
+#include "dhcp.h"
 
 struct interface {
 	char name[INTERFACE_NAME_LEN];

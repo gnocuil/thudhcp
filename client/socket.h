@@ -17,6 +17,10 @@ int recv_packet_ipv6(char* packet, int max_len);
 #define IPv4_SERVER_PORT 67
 #define IPv4_CLIENT_PORT 68
 
+#define IPv6_SERVER_PORT 67
+#define IPv6_CLIENT_PORT 67
+
+
 #define RECV_TIMEOUT_SEC 3
 #define TIMEOUT_RETRY_TIMES 4
 int timeout_count;
@@ -26,6 +30,9 @@ char buf[BUF_LEN];
 
 int ipv4_fd;
 int ipv6_fd;
+
+int send4_fd;
+int send6_fd;
 
 int listen_raw_fd;
 

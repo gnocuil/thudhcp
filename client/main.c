@@ -5,6 +5,7 @@
 
 #include "config.h"
 #include "dhcp.h"
+#include "socket.h"
 
 MODE mode;
 
@@ -94,7 +95,7 @@ int main(int argc, char **argv)
 		}
 		memset(&dest, 0, sizeof(dest));
 		dest.sin6_family = AF_INET6;
-		dest.sin6_port = htons(67);
+		//dest.sin6_port = htons(IPv6_SERVER_PORT);
 		if (inet_pton(AF_INET6, server_addr, &dest.sin6_addr) < 0) {
 			fprintf(err, "Failed to resolve server_addr : %s\n", server_addr);
 			exit(1);

@@ -19,6 +19,48 @@ static char* mac_to_str(unsigned char *ha)
 	return macstr_buf; 
 }
 
+static inline int value(char ch)
+{
+	if (ch >= '0' && ch <= '9')
+		return ch - '0';
+	if (ch >= 'A' && ch <= 'F')
+		return ch - 'A' + 10;
+	if (ch >= 'a' && ch <= 'f')
+		return ch - 'a' + 10;
+	return 0;
+}
+
+int get_ipv6_address()
+{
+	FILE *fin = fopen("/proc/net/if_inet6", "r");
+	if (!fin) {
+		fprintf(err, "Can't open /proc/net/if_inet6\n");
+		return -1;
+	}
+	char buf[200] = {0};
+	while (fgets(buf, 200, fin)) {
+		//printf("[%s]\n", buf);
+		char ipv6addr[100] = {0};
+		int id;
+		int mask_len;
+		int scope;
+		int flag;
+		char name[100] = {0};
+		sscanf(buf, "%s %x %x %x %x %s", ipv6addr, &id, &mask_len, &scope, &flag, name);
+		if (strcmp(name, network_interface->name) == 0 && scope == 0) {
+			memset(&src, 0, sizeof(src));
+			src.sin6_family = AF_INET6;
+			int i;
+			for (i = 0; i < 16; ++i) {
+				src.sin6_addr.s6_addr[i] = (value(ipv6addr[i * 2]) << 4) + value(ipv6addr[i * 2 + 1]);
+			}
+			return 0;
+		}
+	}
+	fprintf(err, "Global IPv6 address of %s not found!\n", network_interface->name);
+	return -1;
+}
+
 void init_interfaces()
 {
 	struct if_nameindex *interfaces = if_nameindex(), *interface;
@@ -73,6 +115,12 @@ void init_interfaces()
 	if (!config_interface) {
 		fprintf(err, "config-interface not found ! name=%s\n", config_interface_name);
 		exit(1);
+	}
+	
+	if (mode == IPv6 || mode == DHCPv6) {
+		if (get_ipv6_address() < 0) {
+			exit(1);
+		}
 	}
 }
 

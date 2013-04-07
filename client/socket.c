@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
-#include <netinet/ip.h> 
+#include <netinet/ip.h>
+#include <netinet/ip6.h>  
 #include <netinet/udp.h> 
 #include <string.h>
 #include <linux/if_packet.h>
@@ -13,24 +14,25 @@
 #include "dhcp.h"
 
 void init_socket()
-{
-	/* UDP socket */
-	struct sockaddr_in servaddr;
-	
+{	
+	listen_raw_fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+	if (listen_raw_fd < 0) {
+		fprintf(err, "Failed to create listening raw socket.\n");
+		exit(0);
+	}
+	struct timeval timeout;
+	timeout.tv_sec = RECV_TIMEOUT_SEC;
+	timeout.tv_usec = 0;
+	setsockopt(listen_raw_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
 	if (mode == IPv4) {
-		if (next_state == DISCOVER || next_state == REQUEST) {
-			listen_raw_fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-			if (listen_raw_fd < 0) {
-				fprintf(err, "Failed to create listening raw socket.\n");
-				exit(0);
-			}
-			struct timeval timeout;
-			timeout.tv_sec = RECV_TIMEOUT_SEC;
-			timeout.tv_usec = 0;
-			setsockopt(listen_raw_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-			
+//		if (next_state == DISCOVER || next_state == REQUEST) {
 			/* create a UDP socket to prevent ICMP port unreachable */
-			ipv4_fd = socket(AF_INET, SOCK_DGRAM, 0);		
+			struct sockaddr_in servaddr;
+			if ((ipv4_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+				fprintf(err, "Failed to create ipv4 sockfd!\n");
+				exit(1);
+			}
 			memset(&servaddr, 0, sizeof(servaddr));
 			servaddr.sin_family = AF_INET;
 			servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -39,37 +41,61 @@ void init_socket()
 				//fprintf(err, "socket_init(): bind error\n");
 				//exit(1);
 			}
-		}
+			send4_fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+			if (send4_fd < 0) {
+				fprintf(err, "Failed to create send4 socket.\n");
+				exit(1);
+			}
+//		}
 	} else if (mode == IPv6) {
 		if ((ipv6_fd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
-			fprintf(err, "Failed to create sockfd!\n");
+			fprintf(err, "Failed to create ipv6 sockfd!\n");
 			exit(1);
 		}
 		struct sockaddr_in6 my_addr;
 		bzero(&my_addr, sizeof(my_addr));
 		my_addr.sin6_family = PF_INET6;
-		my_addr.sin6_port = htons(67);
+		my_addr.sin6_port = htons(IPv6_CLIENT_PORT);
 		my_addr.sin6_addr = in6addr_any;
 		if (bind(ipv6_fd, (struct sockaddr *) &my_addr, sizeof(struct sockaddr_in6)) < 0) {
 			fprintf(err, "Failed to bind!\n");
 			exit(1);
 		}
+		send6_fd = socket(PF_INET6, SOCK_RAW, IPPROTO_RAW);
+		if (send6_fd < 0) {
+			fprintf(err, "Failed to create send4 socket.\n");
+			exit(1);
+		}
+	} else if (mode == DHCPv6) {
 	}
 }
 
 void free_socket()
 {
+	if (listen_raw_fd) {
+		close(listen_raw_fd);
+		listen_raw_fd = 0;
+	}
 	if (mode == IPv4) {
-		if (next_state == OFFER || next_state == ACK) {
-			close(listen_raw_fd);
+//		if (next_state == OFFER || next_state == ACK) {
 			if (ipv4_fd) {
 				close(ipv4_fd);
 				ipv4_fd = 0;
 			}
-		}
+			if (send4_fd) {
+				close(send4_fd);
+				send4_fd = 0;
+			}
+//		}
 	} else if (mode == IPv6) {
-		close(ipv6_fd);
-		ipv6_fd = 0;
+		if (ipv6_fd) {
+			close(ipv6_fd);
+			ipv6_fd = 0;
+		}
+		if (send6_fd) {
+			close(send6_fd);
+			send6_fd = 0;
+		}
 	}
 }
 
@@ -195,11 +221,6 @@ void send_packet_ipv4(char *packet, int len)
 	
 	int total_len = len + 14 + 20 + 8;
 	
-	int fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-	if (fd < 0) {
-		fprintf(err, "Failed to create send socket.\n");
-		exit(1);
-	}
 	
 	struct sockaddr_ll device;
 	if ((device.sll_ifindex = if_nametoindex(network_interface->name)) == 0) {
@@ -207,20 +228,41 @@ void send_packet_ipv4(char *packet, int len)
 		exit(1);
 	}
 	
-	if (sendto(fd, buf, total_len, 0, (struct sockaddr *)&device, sizeof(device)) < 0) {
+	if (sendto(send4_fd, buf, total_len, 0, (struct sockaddr *)&device, sizeof(device)) < 0) {
 		fprintf(err, "Failed to send ipv4 packet.\n");
 		exit(1);
 	}
-	close(fd);
 }
 
 void send_packet_ipv6(char *packet, int len)
-{    
+{
+/* UDP socket
     if (sendto(ipv6_fd, packet, len, 0, (struct sockaddr *)&dest, sizeof(struct sockaddr_in6)) < 0) {
     	fprintf(err, "Failed to send!\n");
     	exit(1);
     }
-    
+*/
+	memset(buf, 0, sizeof(buf));
+	memcpy(buf + 40 + 8, packet, len);
+	struct ip6_hdr *ip6hdr = (struct ip6_hdr *)buf;
+	ip6hdr->ip6_flow = htonl((6 << 28) | (0 << 20) | 0);		
+	ip6hdr->ip6_plen = htons(len + 8);
+	ip6hdr->ip6_nxt = IPPROTO_UDP;
+	ip6hdr->ip6_hops = 128;
+	memcpy(&(ip6hdr->ip6_src), &(src.sin6_addr), sizeof(struct in6_addr));
+	memcpy(&(ip6hdr->ip6_dst), &(dest.sin6_addr), sizeof(struct in6_addr));
+	
+	struct udphdr *udp = (struct udphdr*)(buf + 40);
+	udp->source = htons(IPv6_CLIENT_PORT);
+	udp->dest = htons(IPv6_SERVER_PORT);
+	udp->len = htons(len + 8);
+	udp->check = 0;
+	udp->check = htons(udpchecksum((char*)ip6hdr, (char*)udp, len + 8, 6));
+
+	if (sendto(send6_fd, buf, len + 40 + 8, 0, (struct sockaddr *)&dest, sizeof(dest)) < 0) {
+		fprintf(err, "Failed to send ipv6 packet.\n");
+		exit(1);
+	}
 }
 
 int recv_packet(char* packet, int max_len)
@@ -250,10 +292,21 @@ int recv_packet_ipv4(char* packet, int max_len)
 
 int recv_packet_ipv6(char* packet, int max_len)
 {
+/*
 	socklen_t addr_len;
 	struct sockaddr_in6 addr;
 	int len = recvfrom(ipv6_fd, packet, max_len, 0, (struct sockaddr *)&addr, (socklen_t*)&addr_len);
 	return len;
+*/
+	int len = recv(listen_raw_fd, buf, max_len, 0);
+	if (len < 0) {
+		fprintf(err, "recv timeout!\n");
+		return -1;
+	}
+	len -= 14 + 40 + 8;
+	memcpy(packet, buf + 14 + 40 + 8, len);
+	return len;
+
 }
 
 

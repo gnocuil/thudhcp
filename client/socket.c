@@ -285,6 +285,7 @@ int recv_packet_ipv4(char* packet, int max_len)
 		fprintf(err, "recv timeout!\n");
 		return -1;
 	}
+	//TODO : packet checking
 	len -= 14 + 20 + 8;
 	memcpy(packet, buf + 14 + 20 + 8, len);
 	return len;
@@ -292,21 +293,33 @@ int recv_packet_ipv4(char* packet, int max_len)
 
 int recv_packet_ipv6(char* packet, int max_len)
 {
-/*
+/* UDP socket
 	socklen_t addr_len;
 	struct sockaddr_in6 addr;
 	int len = recvfrom(ipv6_fd, packet, max_len, 0, (struct sockaddr *)&addr, (socklen_t*)&addr_len);
 	return len;
 */
-	int len = recv(listen_raw_fd, buf, max_len, 0);
-	if (len < 0) {
-		fprintf(err, "recv timeout!\n");
-		return -1;
-	}
-	len -= 14 + 40 + 8;
-	memcpy(packet, buf + 14 + 40 + 8, len);
-	return len;
-
+	do {
+		int len = recv(listen_raw_fd, buf, max_len, 0);
+		if (len < 0) {
+			fprintf(err, "recv timeout!\n");
+			return -1;
+		}
+		struct ip6_hdr *ip6hdr = (struct ip6_hdr *)(buf + 14);
+		if (ip6hdr->ip6_flow != htonl((6 << 28) | (0 << 20) | 0))
+			continue;
+		if (ip6hdr->ip6_nxt != IPPROTO_UDP)
+			continue;
+		if (memcmp(&(ip6hdr->ip6_dst), &(src.sin6_addr), sizeof(struct in6_addr)) != 0)
+			continue;
+		struct udphdr *udp = (struct udphdr*)(buf + 14 + 40);
+		if (udp->dest != htons(IPv6_CLIENT_PORT))
+			continue;
+		len -= 14 + 40 + 8;
+		memcpy(packet, buf + 14 + 40 + 8, len);
+		return len;
+	} while (1);
+	return -1;
 }
 
 

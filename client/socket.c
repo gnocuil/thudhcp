@@ -67,6 +67,23 @@ void init_socket()
 			exit(1);
 		}
 	} else if (mode == DHCPv6) {
+        if ((ipv6_fd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
+            fprintf(err, "Failed to create DHCPv6 sockfd!\n");
+            exit(1);
+        }
+        struct sockaddr_in6 myAddr;
+        bzero(&myAddr, sizeof(myAddr));
+        myAddr.sin6_family = PF_INET6;
+        myAddr.sin6_port = htons(DHCPv6_CLIENT_PORT);
+        myAddr.sin6_addr = in6addr_any;
+        if (bind(ipv6_fd, (struct sockaddr*) &myAddr, sizeof(struct sockaddr_in6)) < 0) {
+            fprintf(err, "Failed to bind!\n");
+            exit(1);
+        }
+        if ((send6_fd = socket(PF_INET6, SOCK_RAW, IPPROTO_RAW)) < 0) {
+            fprintf(err, "Failed to create send socket.\n");
+            exit(1);
+        }
 	}
 }
 
@@ -182,6 +199,10 @@ void send_packet(char *packet, int len)
 	case IPv6:
 		send_packet_ipv6(packet, len);
 		return;
+    //DHCPv6 support
+    case DHCPv6:
+        send_packet_dhcpv6(packet, len);
+        return;
 	default:
 		fprintf(err, "send_packet : unknown mode!\n");
 		exit(0);
@@ -264,6 +285,36 @@ void send_packet_ipv6(char *packet, int len)
 		exit(1);
 	}
 }
+
+//Send DHCPv4 over DHCPv6
+void send_packet_dhcpv6(char* packet, int len) {
+    struct ip6_hdr* hdr = (struct ip6_hdr*) buf;
+    struct udphdr* udp = (struct udphdr*) (buf + 40);
+    DHCPv6Header* dhcpv6Hdr = (DHCPv6Header*) (buf + 40 + 8);
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf + 40 + 8 + 4, packet, len);
+    hdr->ip6_flow = htonl((6 << 28) | (0 << 20) | 0);
+    hdr->ip6_plen = htons(len + 8 + 4);
+    hdr->ip6_nxt = IPPROTO_UDP;
+    hdr->ip6_hops = 128;
+    memcpy(&(hdr->ip6_src), &(src.sin6_addr), sizeof(struct in6_addr));
+    memcpy(&(hdr->ip6_dst), &(dest.sin6_addr), sizeof(struct in6_addr));
+    udp->source = htons(DHCPv6_CLIENT_PORT);
+    udp->dest = htons(DHCPv6_SERVER_PORT);
+    udp->len = htons(len + 8 + 4);
+    udp->check = 0;
+    dhcpv6Hdr->msgType = htons(1);
+    //Debug info
+    dhcpv6Hdr->transactionID[0] = 0xaa;
+    dhcpv6Hdr->transactionID[1] = 0xbb;
+    dhcpv6Hdr->transactionID[2] = 0xcc;
+    udp->check = htons(udpchecksum((char*) hdr, (char*) udp, len + 8 + 4, 6));
+    if (sendto(send6_fd, buf, len + 40 + 8 + 4, 0, (struct sockaddr*) &dest, sizeof(dest)) < 0) {
+        fprintf(err, "Failed to send DHCPv6 packet.\n");
+        exit(1);
+    }
+}
+
 
 int recv_packet(char* packet, int max_len)
 {

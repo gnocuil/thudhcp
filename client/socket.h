@@ -7,6 +7,13 @@ void free_socket();
 void send_packet(char *packet, int len);
 void send_packet_ipv4(char *packet, int len);
 void send_packet_ipv6(char *packet, int len);
+//DHCPv6 support
+void send_packet_dhcpv6(char*, int);
+
+typedef struct {
+    uint8_t msgType;
+    char transactionID[3];
+} DHCPv6Header;
 
 int recv_packet(char* packet, int max_len);
 int recv_packet_ipv4(char* packet, int max_len);
@@ -19,6 +26,10 @@ int recv_packet_ipv6(char* packet, int max_len);
 
 #define IPv6_SERVER_PORT 67
 #define IPv6_CLIENT_PORT 67
+
+//DHCPv6 ports
+#define DHCPv6_SERVER_PORT 547
+#define DHCPv6_CLIENT_PORT 546
 
 
 #define RECV_TIMEOUT_SEC 3

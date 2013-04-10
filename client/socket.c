@@ -291,25 +291,28 @@ void send_packet_dhcpv6(char* packet, int len) {
     struct ip6_hdr* hdr = (struct ip6_hdr*) buf;
     struct udphdr* udp = (struct udphdr*) (buf + 40);
     DHCPv6Header* dhcpv6Hdr = (DHCPv6Header*) (buf + 40 + 8);
+    const int dhcpv6HdrLen = 8;
     memset(buf, 0, sizeof(buf));
-    memcpy(buf + 40 + 8 + 4, packet, len);
+    memcpy(buf + 40 + 8 + dhcpv6HdrLen, packet, len);
     hdr->ip6_flow = htonl((6 << 28) | (0 << 20) | 0);
-    hdr->ip6_plen = htons(len + 8 + 4);
+    hdr->ip6_plen = htons(len + 8 + dhcpv6HdrLen);
     hdr->ip6_nxt = IPPROTO_UDP;
     hdr->ip6_hops = 128;
     memcpy(&(hdr->ip6_src), &(src.sin6_addr), sizeof(struct in6_addr));
     memcpy(&(hdr->ip6_dst), &(dest.sin6_addr), sizeof(struct in6_addr));
     udp->source = htons(DHCPv6_CLIENT_PORT);
     udp->dest = htons(DHCPv6_SERVER_PORT);
-    udp->len = htons(len + 8 + 4);
+    udp->len = htons(len + 8 + dhcpv6HdrLen);
     udp->check = 0;
-    dhcpv6Hdr->msgType = htons(1);
+    dhcpv6Hdr->msgType = 1; //Message type is currently fixed to SOLICIT
     //Debug info
     dhcpv6Hdr->transactionID[0] = 0xaa;
     dhcpv6Hdr->transactionID[1] = 0xbb;
     dhcpv6Hdr->transactionID[2] = 0xcc;
-    udp->check = htons(udpchecksum((char*) hdr, (char*) udp, len + 8 + 4, 6));
-    if (sendto(send6_fd, buf, len + 40 + 8 + 4, 0, (struct sockaddr*) &dest, sizeof(dest)) < 0) {
+    dhcpv6Hdr->optionCode = htons(92); //Option code chose randomly
+    dhcpv6Hdr->optionLen = htons(len);
+    udp->check = htons(udpchecksum((char*) hdr, (char*) udp, len + 8 + dhcpv6HdrLen, 6));
+    if (sendto(send6_fd, buf, len + 40 + 8 + dhcpv6HdrLen, 0, (struct sockaddr*) &dest, sizeof(dest)) < 0) {
         fprintf(err, "Failed to send DHCPv6 packet.\n");
         exit(1);
     }

@@ -13,6 +13,8 @@ void send_packet_dhcpv6(char*, int);
 typedef struct {
     uint8_t msgType;
     char transactionID[3];
+    uint16_t optionCode;
+    uint16_t optionLen;
 } DHCPv6Header;
 
 int recv_packet(char* packet, int max_len);

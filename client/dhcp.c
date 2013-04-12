@@ -18,7 +18,6 @@ uint32_t generate_xid()
 
 void init_dhcp()
 {
-	srand(time(NULL));
 	timeout_count = TIMEOUT_RETRY_TIMES;
 	
 	if (load_lease(&offer_lease)) {
@@ -69,10 +68,10 @@ int gen_option_message_type(uint8_t *options, int pos)
 	options[pos++] = 1;
 	switch (next_state) {
 	case DISCOVER:
-		options[pos++] = 1;
+		options[pos++] = DISCOVER;
 		break;
 	case REQUEST:
-		options[pos++] = 3;
+		options[pos++] = REQUEST;
 		break;
 	default:
 		fprintf(err, "unknown next_state!\n");

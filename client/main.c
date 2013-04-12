@@ -59,6 +59,7 @@ int main(int argc, char **argv)
 	daemon = 1;
 	err = stderr;
 	portset = 0;
+	srand(time(NULL));
 	int i;
 	for (i = 1; i < argc; ++i) {
 		if (strcmp(argv[i], "-f") == 0) {

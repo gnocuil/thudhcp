@@ -304,11 +304,11 @@ void send_packet_dhcpv6(char* packet, int len) {
     udp->dest = htons(DHCPv6_SERVER_PORT);
     udp->len = htons(len + 8 + dhcpv6HdrLen);
     udp->check = 0;
-    dhcpv6Hdr->msgType = 1; //Message type is currently fixed to SOLICIT
+    dhcpv6Hdr->msgType = BOOTREQUESTV6; //Message ID TBD
     //Debug info
-    dhcpv6Hdr->transactionID[0] = 0xaa;
-    dhcpv6Hdr->transactionID[1] = 0xbb;
-    dhcpv6Hdr->transactionID[2] = 0xcc;
+    dhcpv6Hdr->transactionID[0] = rand() & 0xFF;
+    dhcpv6Hdr->transactionID[1] = rand() & 0xFF;
+    dhcpv6Hdr->transactionID[2] = rand() & 0xFF;
     dhcpv6Hdr->optionCode = htons(92); //Option code chose randomly
     dhcpv6Hdr->optionLen = htons(len);
     udp->check = htons(udpchecksum((char*) hdr, (char*) udp, len + 8 + dhcpv6HdrLen, 6));

@@ -105,24 +105,18 @@ int main(int argc, char **argv)
 
     //DHCPv6 support
     if (mode == DHCPv6) {
-		if (strlen(server_addr) == 0) {
-			fprintf(err, "server-addr MUST be configured in DHCPv4-over-DHCPv6 mode!\n");
-			exit(0);
-		}
-        portset = 1;
 		memset(&dest, 0, sizeof(dest));
 		dest.sin6_family = AF_INET6;
-		if (inet_pton(AF_INET6, server_addr, &dest.sin6_addr) < 0) {
+		if (inet_pton(AF_INET6, "ff02::1:2", &dest.sin6_addr) < 0) {
 			fprintf(err, "Failed to resolve server_addr : %s\n", server_addr);
 			exit(1);
 		}
-		printf("server-addr : %s\n", server_addr);
 	}
-	
+
 	if (portset)
-		printf("Port Set!\n");
-	else
-		printf("No Port Set!\n");
+		printf("port set mode\n");
+//	else
+//		printf("No Port Set!\n");
 	
 	if (config_interface_name[0] == '\0') {
 		usage();

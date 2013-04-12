@@ -38,8 +38,13 @@ int get_ipv6_address()
 		return -1;
 	}
 	char buf[200] = {0};
+	int target_scope;
+	if (mode == IPv6)
+		target_scope = 0;//global
+	else
+		target_scope = 0x20;//link
+
 	while (fgets(buf, 200, fin)) {
-		//printf("[%s]\n", buf);
 		char ipv6addr[100] = {0};
 		int id;
 		int mask_len;
@@ -47,17 +52,19 @@ int get_ipv6_address()
 		int flag;
 		char name[100] = {0};
 		sscanf(buf, "%s %x %x %x %x %s", ipv6addr, &id, &mask_len, &scope, &flag, name);
-		if (strcmp(name, network_interface->name) == 0 && scope == 0) {
+		if (strcmp(name, network_interface->name) == 0 && scope == target_scope) {
 			memset(&src, 0, sizeof(src));
 			src.sin6_family = AF_INET6;
 			int i;
 			for (i = 0; i < 16; ++i) {
 				src.sin6_addr.s6_addr[i] = (value(ipv6addr[i * 2]) << 4) + value(ipv6addr[i * 2 + 1]);
 			}
+			fclose(fin);
 			return 0;
 		}
 	}
-	fprintf(err, "Global IPv6 address of %s not found!\n", network_interface->name);
+	fprintf(err, "%s IPv6 address of %s not found!\n", target_scope == 0 ? "Global" : "Link", network_interface->name);
+	fclose(fin);
 	return -1;
 }
 

@@ -309,7 +309,7 @@ void send_packet_dhcpv6(char* packet, int len) {
     dhcpv6Hdr->transactionID[0] = rand() & 0xFF;
     dhcpv6Hdr->transactionID[1] = rand() & 0xFF;
     dhcpv6Hdr->transactionID[2] = rand() & 0xFF;
-    dhcpv6Hdr->optionCode = htons(92); //Option code chose randomly
+    dhcpv6Hdr->optionCode = htons(OPTION_BOOTP_MSG); //Option code TBD
     dhcpv6Hdr->optionLen = htons(len);
     udp->check = htons(udpchecksum((char*) hdr, (char*) udp, len + 8 + dhcpv6HdrLen, 6));
     if (sendto(send6_fd, buf, len + 40 + 8 + dhcpv6HdrLen, 0, (struct sockaddr*) &dest, sizeof(dest)) < 0) {

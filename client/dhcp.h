@@ -86,4 +86,6 @@ extern FILE *err;
 #define OPTION_RENEWALTIME          58
 #define OPTION_PORTSET              224
 
+#define OPTION_BOOTP_MSG            54321
+
 #endif /* __DHCP_H__ */

@@ -13,7 +13,7 @@ static void usage()
 {
 	printf("Usage : thclient [options] <config_interface>\n");
 	printf("        options:\n");
-	printf("            -f                                       running in front mode (default in daemon mode)\n");
+	printf("            -f                                       running in foreground (default in background)\n");
 	printf("            -p                                       Use port set\n");
 	printf("            --network-interface <network_interface>  default the same as config_interface\n");
 	printf("            --encap-mode <mode>                      available modes: ipv4(default), ipv6, dhcpv6\n");

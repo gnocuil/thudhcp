@@ -124,7 +124,7 @@ void init_interfaces()
 		exit(1);
 	}
 	
-	if (mode == IPv6 || mode == DHCPv6) {
+	if ((mode == IPv6 || mode == DHCPv6) && strlen(local_addr) == 0) {
 		if (get_ipv6_address() < 0) {
 			exit(1);
 		}

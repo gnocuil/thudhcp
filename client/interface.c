@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <net/route.h>
 //#include <net/if_arp.h>
+#include <arpa/inet.h>
 
 #include "interface.h"
 #include "config.h"

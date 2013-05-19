@@ -7,6 +7,7 @@
 #include <string.h>
 #include <linux/if_packet.h>
 #include <linux/if_ether.h>
+#include <sys/time.h>
 
 #include "socket.h"
 #include "config.h"
@@ -114,6 +115,22 @@ void free_socket()
 			send6_fd = 0;
 		}
 	}
+}
+
+static struct timeval base;
+
+static void timeout_init()
+{
+	gettimeofday(&base, 0);
+}
+
+static int timeout_check()
+{
+	struct timeval cur;
+	gettimeofday(&cur, 0);
+	if (cur.tv_sec - base.tv_sec - 1 > RECV_TIMEOUT_SEC)
+		return 1;
+	return 0;
 }
 
 static uint16_t udpchecksum(char *iphead, char *udphead, int udplen, int type)
@@ -334,8 +351,9 @@ int recv_packet(char* packet, int max_len)
 
 int recv_packet_ipv4(char* packet, int max_len)
 {
+	timeout_init();
 	int len = recv(listen_raw_fd, buf, max_len, 0);
-	if (len < 0) {
+	if (len < 0 || timeout_check()) {
 		fprintf(err, "recv timeout!\n");
 		return -1;
 	}
@@ -353,9 +371,10 @@ int recv_packet_ipv6(char* packet, int max_len)
 	int len = recvfrom(ipv6_fd, packet, max_len, 0, (struct sockaddr *)&addr, (socklen_t*)&addr_len);
 	return len;
 */
+	timeout_init();
 	do {
 		int len = recv(listen_raw_fd, buf, max_len, 0);
-		if (len < 0) {
+		if (len < 0 || timeout_check()) {
 			fprintf(err, "recv timeout!\n");
 			return -1;
 		}

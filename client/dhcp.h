@@ -68,8 +68,8 @@ extern FILE *err;
 #define BOOT_REQUEST 1
 #define BOOT_REPLY 2
 
-#define BOOTREQUESTV6 245
-#define BOOTREPLYV6 246
+#define BOOTREQUESTV6              245
+#define BOOTREPLYV6                246
 
 #define OPTION_PAD                   0
 #define OPTION_SUBNETMASK            1

@@ -64,7 +64,7 @@ void init_socket()
 		}
 		send6_fd = socket(PF_INET6, SOCK_RAW, IPPROTO_RAW);
 		if (send6_fd < 0) {
-			fprintf(err, "Failed to create send4 socket.\n");
+			fprintf(err, "Failed to create send6 socket.\n");
 			exit(1);
 		}
 	} else if (mode == DHCPv6) {
@@ -82,7 +82,7 @@ void init_socket()
 //			exit(1);
 		}
 		if ((send6_fd = socket(PF_INET6, SOCK_RAW, IPPROTO_RAW)) < 0) {
-			fprintf(err, "Failed to create send socket.\n");
+			fprintf(err, "Failed to create send6 socket.\n");
 			exit(1);
 		}
 	}
@@ -105,7 +105,7 @@ void free_socket()
 				send4_fd = 0;
 			}
 //		}
-	} else if (mode == IPv6) {
+	} else if (mode == IPv6 || mode == DHCPv6) {
 		if (ipv6_fd) {
 			close(ipv6_fd);
 			ipv6_fd = 0;
@@ -307,19 +307,18 @@ void send_packet_ipv6(char *packet, int len)
 void send_packet_dhcpv6(char* packet, int len) {
 	struct ip6_hdr* hdr = (struct ip6_hdr*) buf;
 	struct udphdr* udp = (struct udphdr*) (buf + 40);
-	DHCPv6Header* dhcpv6Hdr = (DHCPv6Header*) (buf + 40 + 8);
-	const int dhcpv6HdrLen = 8;
+	struct DHCPv6Header* dhcpv6Hdr = (struct DHCPv6Header*) (buf + 40 + 8);
 	memset(buf, 0, sizeof(buf));
-	memcpy(buf + 40 + 8 + dhcpv6HdrLen, packet, len);
+	memcpy(buf + 40 + 8 + sizeof(struct DHCPv6Header), packet, len);
 	hdr->ip6_flow = htonl((6 << 28) | (0 << 20) | 0);
-	hdr->ip6_plen = htons(len + 8 + dhcpv6HdrLen);
+	hdr->ip6_plen = htons(len + 8 + sizeof(struct DHCPv6Header));
 	hdr->ip6_nxt = IPPROTO_UDP;
 	hdr->ip6_hops = 128;
 	memcpy(&(hdr->ip6_src), &(src.sin6_addr), sizeof(struct in6_addr));
 	memcpy(&(hdr->ip6_dst), &(dest.sin6_addr), sizeof(struct in6_addr));
 	udp->source = htons(DHCPv6_CLIENT_PORT);
 	udp->dest = htons(DHCPv6_SERVER_PORT);
-	udp->len = htons(len + 8 + dhcpv6HdrLen);
+	udp->len = htons(len + 8 + sizeof(struct DHCPv6Header));
 	udp->check = 0;
 	dhcpv6Hdr->msgType = BOOTREQUESTV6; //Message ID TBD
 	//Debug info
@@ -328,8 +327,8 @@ void send_packet_dhcpv6(char* packet, int len) {
 	dhcpv6Hdr->transactionID[2] = rand() & 0xFF;
 	dhcpv6Hdr->optionCode = htons(OPTION_BOOTP_MSG); //Option code TBD
 	dhcpv6Hdr->optionLen = htons(len);
-	udp->check = htons(udpchecksum((char*) hdr, (char*) udp, len + 8 + dhcpv6HdrLen, 6));
-	if (sendto(send6_fd, buf, len + 40 + 8 + dhcpv6HdrLen, 0, (struct sockaddr*) &dest, sizeof(dest)) < 0) {
+	udp->check = htons(udpchecksum((char*) hdr, (char*) udp, len + 8 + sizeof(struct DHCPv6Header), 6));
+	if (sendto(send6_fd, buf, len + 40 + 8 + sizeof(struct DHCPv6Header), 0, (struct sockaddr*) &dest, sizeof(dest)) < 0) {
 		fprintf(err, "Failed to send DHCPv6 packet.\n");
 		exit(1);
 	}
@@ -343,6 +342,8 @@ int recv_packet(char* packet, int max_len)
 		return recv_packet_ipv4(packet, max_len);
 	case IPv6:
 		return recv_packet_ipv6(packet, max_len);
+	case DHCPv6:
+		return recv_packet_dhcpv6(packet, max_len);
 	default:
 		fprintf(err, "recv_packet : unknown mode!\n");
 		exit(0);
@@ -395,4 +396,42 @@ int recv_packet_ipv6(char* packet, int max_len)
 	return -1;
 }
 
+int recv_packet_dhcpv6(char* packet, int max_len)
+{
+	timeout_init();
+	do {
+		int len = recv(listen_raw_fd, buf, max_len, 0);
+		if (len < 0 || timeout_check()) {
+			fprintf(err, "recv timeout!\n");
+			return -1;
+		}
+		struct ip6_hdr *ip6hdr = (struct ip6_hdr *)(buf + 14);
+		if (ip6hdr->ip6_flow != htonl((6 << 28) | (0 << 20) | 0))
+			continue;
+		if (ip6hdr->ip6_nxt != IPPROTO_UDP)
+			continue;
+		if (memcmp(&(ip6hdr->ip6_dst), &(src.sin6_addr), sizeof(struct in6_addr)) != 0)
+			continue;
+		struct udphdr *udp = (struct udphdr*)(buf + 14 + 40);
+		if (udp->dest != htons(DHCPv6_CLIENT_PORT))
+			continue;
+		
+		unsigned char *p = buf + 14 + 40 + 8;
+		if (*p != BOOTREPLYV6)
+			continue;
+		p += 4;
+		while (p < (unsigned char*)buf + len) {
+			if (*(unsigned short*)p == htons(OPTION_BOOTP_MSG)) {
+				p += 2;
+				unsigned length = htons(*(unsigned short*)p);
+				p += 2;
+				memcpy(packet, p, length);//TODO : check
+				return length;
+			}
+			p += 2;
+			p += htons(*(unsigned short*)p);
+		}
+	} while (1);
+	return -1;
+}
 

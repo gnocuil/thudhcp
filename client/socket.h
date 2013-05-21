@@ -7,19 +7,19 @@ void free_socket();
 void send_packet(char *packet, int len);
 void send_packet_ipv4(char *packet, int len);
 void send_packet_ipv6(char *packet, int len);
-//DHCPv6 support
-void send_packet_dhcpv6(char*, int);
+void send_packet_dhcpv6(char *packet, int len);
 
-typedef struct {
+struct DHCPv6Header {
     uint8_t msgType;
     char transactionID[3];
     uint16_t optionCode;
     uint16_t optionLen;
-} DHCPv6Header;
+};
 
 int recv_packet(char* packet, int max_len);
 int recv_packet_ipv4(char* packet, int max_len);
 int recv_packet_ipv6(char* packet, int max_len);
+int recv_packet_dhcpv6(char* packet, int max_len);
 
 #define UDP 0x11
 

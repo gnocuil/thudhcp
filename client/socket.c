@@ -67,6 +67,7 @@ void init_socket()
 			fprintf(err, "Failed to create send6 socket.\n");
 			exit(1);
 		}
+		setsockopt(send6_fd, SOL_SOCKET, SO_BINDTODEVICE, network_interface_name, strlen(network_interface_name));
 	} else if (mode == DHCPv6) {
 		if ((ipv6_fd = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
 			fprintf(err, "Failed to create DHCPv6 sockfd!\n");
@@ -85,6 +86,7 @@ void init_socket()
 			fprintf(err, "Failed to create send6 socket.\n");
 			exit(1);
 		}
+		setsockopt(send6_fd, SOL_SOCKET, SO_BINDTODEVICE, network_interface_name, strlen(network_interface_name));
 	}
 }
 

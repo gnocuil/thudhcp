@@ -286,8 +286,14 @@ void dhcp_offer()
 				dhcp_discover();
 				return;
 			} else {
-				fprintf(err, "give up...\n");
-				exit(0);
+				//fprintf(err, "give up...\n");
+				//exit(0);
+				fprintf(err, "Error in dhcp_offer, sleep 60s...\n");
+				sleep(60);
+				timeout_count = TIMEOUT_RETRY_TIMES;
+				next_state = DISCOVER;
+				dhcp_discover();
+				return;
 			}
 		}
 		valid = check_packet(packet);
@@ -345,8 +351,14 @@ void dhcp_ack()
 					dhcp_discover();
 					return;
 				} else {
-					fprintf(err, "give up...\n");
-					exit(0);
+					//fprintf(err, "give up...\n");
+					//exit(0);
+					fprintf(err, "Error in dhcp_ack, sleep 60s...\n");
+					sleep(60);
+					timeout_count = TIMEOUT_RETRY_TIMES;
+					next_state = DISCOVER;
+					dhcp_discover();
+					return;
 				}
 			}
 		}

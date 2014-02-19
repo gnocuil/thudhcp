@@ -324,9 +324,9 @@ void send_packet_dhcpv6(char* packet, int len) {
 	udp->check = 0;
 	dhcpv6Hdr->msgType = BOOTREQUESTV6; //Message ID TBD
 	//Debug info
-	dhcpv6Hdr->transactionID[0] = rand() & 0xFF;
-	dhcpv6Hdr->transactionID[1] = rand() & 0xFF;
-	dhcpv6Hdr->transactionID[2] = rand() & 0xFF;
+	dhcpv6Hdr->transactionID[0] = 0;
+	dhcpv6Hdr->transactionID[1] = 0;
+	dhcpv6Hdr->transactionID[2] = 0;
 	dhcpv6Hdr->optionCode = htons(OPTION_BOOTP_MSG); //Option code TBD
 	dhcpv6Hdr->optionLen = htons(len);
 	udp->check = htons(udpchecksum((char*) hdr, (char*) udp, len + 8 + sizeof(struct DHCPv6Header), 6));

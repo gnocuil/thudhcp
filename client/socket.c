@@ -431,7 +431,7 @@ int recv_packet_dhcpv6(char* packet, int max_len)
 				return length;
 			}
 			p += 2;
-			p += htons(*(unsigned short*)p);
+			p += htons(*(unsigned short*)p) + 2;
 		}
 	} while (1);
 	return -1;

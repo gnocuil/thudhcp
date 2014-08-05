@@ -68,8 +68,8 @@ extern FILE *err;
 #define BOOT_REQUEST 1
 #define BOOT_REPLY 2
 
-#define BOOTREQUESTV6              245
-#define BOOTREPLYV6                246
+#define BOOTREQUESTV6              20
+#define BOOTREPLYV6                21
 
 #define OPTION_PAD                   0
 #define OPTION_SUBNETMASK            1
@@ -86,6 +86,6 @@ extern FILE *err;
 #define OPTION_RENEWALTIME          58
 #define OPTION_PORTSET              224
 
-#define OPTION_BOOTP_MSG            54321
+#define OPTION_BOOTP_MSG            87
 
 #endif /* __DHCP_H__ */
